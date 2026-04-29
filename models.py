@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String
 from database import Base
 
+# Database model for maintenance fault reports
 class Fault(Base):
     __tablename__ = "faults"
 

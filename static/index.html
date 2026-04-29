@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fault Tracker</title>
+    <style>
+        body { font-family: system-ui, Arial; margin: 16px; max-width: 720px; }
+        .card { padding: 12px; border: 1px solid #ddd; border-radius: 12px; margin: 10px 0; }
+        input, button { font-size: 16px; padding: 10px; width: 100%; margin: 6px 0; }
+        button { cursor: pointer; }
+        .row { display: grid; gap: 10px; grid-template-columns: 1fr; }
+        @media (min-width: 640px) { .row { grid-template-columns: 1fr 1fr; } }
+        .muted { color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <h1>Fault Tracker</h1>
+    <p class="muted">AR Maintenance System – Dashboard</p>
+
+    <div class="card">
+        <h2>Report Fault</h2>
+        <div class="row">
+            <input id="title" placeholder="Title (e.g., 'Side Crack')" />
+            <input id="location" placeholder="Location (e.g., 'Bay 3')" />
+        </div>
+        <input id="severity" type="number" min="1" max="3" value="1" />
+        <button id="addBtn" type="button">Report Fault</button>
+        <pre id="msg"></pre>
+    </div>
+
+    <div class="card">
+        <h2>Faults</h2>
+        <div id="list"></div>
+    </div>
+
+    <script type="module" src="/static/main.js"></script>
+</body>
+</html>

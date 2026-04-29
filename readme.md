@@ -16,17 +16,16 @@
 ## Project structure
 
 ar-project/
-├── main.py # FastAPI app, routes, fault CRUD
-├── database.py # SQLite connection (maintenance.db)
-├── models.py # SQLAlchemy Fault model
-├── schemas.py # Pydantic schemas for input/output
-├── requirements.txt # Python dependencies
+├── main.py # FastAPI app and all routes
+├── database.py # SQLite connection setup
+├── models.py # Fault SQLAlchemy model
+├── schemas.py # Pydantic input/output schemas
 ├── static/
 │ ├── index.html # Dashboard page
 │ ├── api.js # fetch calls to backend
-│ ├── ui.js # HTML rendering + XSS escape
-│ └── main.js # wires form and refresh
-└── maintenance.db # auto-generated database file
+│ ├── ui.js # HTML rendering
+│ └── main.js # event wiring and initialisation
+└── .gitignore
 
 
 ## How to run

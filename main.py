@@ -4,11 +4,17 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
-from models import Fault, Tool
-from schemas import FaultCreate, FaultOut, FaultUpdate, ToolCreate, ToolOut, ToolUpdate
+from models import Fault, User, Tool
+from schemas import FaultCreate, FaultOut, FaultUpdate, UserCreate, ToolCreate, ToolOut, ToolUpdate
+import bcrypt, jwt
+from fastapi.security import HTTPBearer
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+from datetime import datetime, timedelta
 from typing import Optional
-
-
+import jwt
+import os
+import logging
 # Create tables in the database
 Base.metadata.create_all(bind=engine)
 
@@ -68,7 +74,26 @@ def get_db():
         yield db
     finally:
         db.close()
+        
+#JWT verification
 
+security = HTTPBearer()
+
+def create_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(hours=1)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
+
+def verify_token(token=Depends(security)):
+    try:
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=403, detail="Invalid token")
+    
 # ---------- FAULT ROUTES ----------
 
 @app.get("/api/faults", response_model=list[FaultOut])
@@ -86,13 +111,16 @@ def get_fault(fault_id: int, db: Session = Depends(get_db)):
     return fault
 
 @app.post("/api/faults", response_model=FaultOut, status_code=201)
-def create_fault(payload: FaultCreate, db: Session = Depends(get_db)):
+def create_fault(payload: FaultCreate, db: Session = Depends(get_db), user=Depends(verify_token)):
+    db_user = db.query(User).filter(User.username == user["sub"]).first()
     new_fault = Fault(
         title=payload.title,
         location=payload.location,
         severity=payload.severity,
+        user_id=db_user.id,
         status="open"
-    )
+         )
+    
     db.add(new_fault)
     db.commit()
     db.refresh(new_fault)
@@ -171,3 +199,70 @@ def health():
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
+
+#----------- MIDDLEWARE -----------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+) #controls cross-origin risks
+
+#Password Hashing
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret") #env variables for exposure prevention
+
+@app.post("/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.username == user.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
+    
+    db_user = User(username=user.username, password=hashed.decode())
+    db.add(db_user)
+    db.commit()
+    
+    return {"message": "User created"}
+
+@app.post("/login")
+def login(user:UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not bcrypt.checkpw(user.password.encode(), db_user.password.encode()):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token({"sub": db_user.username})
+    
+    return {"access_token": token, "token_type": "bearer"}
+
+
+
+    
+#Route Protection
+
+@app.get("/api/secure/faults", response_model=list[FaultOut])
+def list_faults_protected(status: Optional[str] = None,
+                db: Session = Depends(get_db),
+                user=Depends(verify_token)
+):
+    query = db.query(Fault)
+    if status in ("open", "closed"):
+        query = query.filter(Fault.status == status)
+    return query.all()
+
+
+#logging
+
+logging.basicConfig(level=logging.INFO)
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    logging.info(f"{request.method} {request.url}")
+    response = await call_next(request)
+    return response

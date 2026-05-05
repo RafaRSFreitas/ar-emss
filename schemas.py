@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
+from datetime import datetime
 
 # Schema for creating a new fault report
 class FaultCreate(BaseModel):
@@ -13,6 +14,9 @@ class FaultOut(BaseModel):
     location: str
     severity: int
     status: str
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -38,3 +42,10 @@ class ToolOut(BaseModel):
 # Schema for updating tool status
 class ToolUpdate(BaseModel):
     status: str = Field(pattern="^(checked_in|checked_out)$")
+# Schema for user login   
+class UserCreate(BaseModel):
+    username: constr(min_length=3, max_length=50) # type: ignore
+    password: constr(min_length=6) # type: ignore
+    
+
+    

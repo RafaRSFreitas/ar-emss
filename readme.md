@@ -5,12 +5,16 @@
 - **Backend** runs with FastAPI + SQLite
 - **Database** has two tables:
   - `faults` (title, owner, status)
-  - `tools` (name, status) – added in BE-7
+  - `tools` (name, status)
 - **API endpoints** live and tested at `/docs`:
   - `GET /api/faults` → list all faults
   - `POST /api/faults` → report a new fault
   - `GET /api/faults/{id}` → single fault
   - `PATCH /api/faults/{id}` → update fault status (open/closed)
+  - `GET /api/tools` → list all tools
+  - `POST /api/tools` → add a new tool
+  - `GET /api/tools/{id}` → single tool (or 404)
+  - `PATCH /api/tools/{id}` → update tool status (checked_in/checked_out)
   - `GET /health` → server health check
   - *Tool routes (BE-8) are planned but not yet implemented*
 - **Pydantic schemas** include `FaultCreate`, `FaultOut`, `FaultUpdate` and the newly added `ToolCreate`, `ToolOut`, `ToolUpdate`

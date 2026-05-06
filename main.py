@@ -1,11 +1,10 @@
-import os
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
-from models import Fault
-from schemas import FaultCreate, FaultOut, FaultUpdate
+from models import Fault, Tool
+from schemas import FaultCreate, FaultOut, FaultUpdate, ToolCreate, ToolOut, ToolUpdate
 from typing import Optional
 
 
@@ -60,6 +59,57 @@ def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_
     db.commit()
     db.refresh(fault)
     return fault
+
+# ---------- TOOL ROUTES ----------
+
+# Tool API endpoints
+@app.get("/api/tools", response_model=list[ToolOut])
+def list_tools(db: Session = Depends(get_db)):
+    """Return all tools from the database."""
+    return db.query(Tool).all()
+
+
+@app.post("/api/tools", response_model=ToolOut, status_code=201)
+def create_tool(payload: ToolCreate, db: Session = Depends(get_db)):
+    """Create a new tool. Always starts as checked_in."""
+    new_tool = Tool(
+        name=payload.name,
+        status="checked_in"   # default, but explicit is clearer
+    )
+
+    db.add(new_tool)
+    db.commit()
+    db.refresh(new_tool)
+
+    return new_tool
+
+
+@app.get("/api/tools/{tool_id}", response_model=ToolOut)
+def get_tool(tool_id: int, db: Session = Depends(get_db)):
+    """Return a single tool by ID, or 404 if not found."""
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+
+    if tool is None:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    return tool
+
+
+@app.patch("/api/tools/{tool_id}", response_model=ToolOut)
+def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db)):
+    """Update a tool's status (checked_in / checked_out)."""
+    tool = db.query(Tool).filter(Tool.id == tool_id).first()
+
+    if tool is None:
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+    tool.status = payload.status
+    db.commit()
+    db.refresh(tool)
+
+    return tool
+
+# ---------- STATIC FILES & HOME PAGE ----------
 
 # Serve static files 
 app.mount("/static", StaticFiles(directory="static"), name="static")

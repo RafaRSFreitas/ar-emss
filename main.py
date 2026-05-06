@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import Fault
 from schemas import FaultCreate, FaultOut, FaultUpdate
+from typing import Optional
 
 
 # Create tables in the database
@@ -22,8 +23,6 @@ def get_db():
         db.close()
 
 # ---------- FAULT ROUTES ----------
-
-from typing import Optional
 
 @app.get("/api/faults", response_model=list[FaultOut])
 def list_faults(status: Optional[str] = None, db: Session = Depends(get_db)):

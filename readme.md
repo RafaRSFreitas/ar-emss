@@ -3,13 +3,17 @@
 ## What's working right now
 
 - **Backend** runs with FastAPI + SQLite
-- **Database** has a `faults` table (title, location, severity, status)
+- **Database** has two tables:
+  - `faults` (title, owner, status)
+  - `tools` (name, status) – added in BE-7
 - **API endpoints** live and tested at `/docs`:
   - `GET /api/faults` → list all faults
   - `POST /api/faults` → report a new fault
   - `GET /api/faults/{id}` → single fault
-  - `PATCH /api/faults/{id}` → update status (open/closed)
+  - `PATCH /api/faults/{id}` → update fault status (open/closed)
   - `GET /health` → server health check
+  - *Tool routes (BE-8) are planned but not yet implemented*
+- **Pydantic schemas** include `FaultCreate`, `FaultOut`, `FaultUpdate` and the newly added `ToolCreate`, `ToolOut`, `ToolUpdate`
 - **Dashboard** frontend at `/` shows a form to report faults and a live list
 - **Static files** served from the `static/` folder (JS modules split as `api.js`, `ui.js`, `main.js`)
 
@@ -17,10 +21,10 @@
 
 ```
 ar-project/
-├── main.py              # FastAPI app and all routes
+├── main.py              # FastAPI app and all routes (faults done, tools to be added)
 ├── database.py          # SQLite connection setup
-├── models.py            # Fault SQLAlchemy model
-├── schemas.py           # Pydantic input/output schemas
+├── models.py            # SQLAlchemy models for Fault and Tool
+├── schemas.py           # Pydantic schemas for Fault and Tool input/output
 ├── requirements.txt     # Python dependencies
 ├── .gitignore
 └── static/

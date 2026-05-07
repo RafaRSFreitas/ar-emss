@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
@@ -12,6 +13,53 @@ from typing import Optional
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AR Maintenance System")
+
+
+# -----Centralised error handlers------
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Standardises HTTP errors (404, 400, etc.) into the common shape."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "ok": False,
+            "error": {
+                "type": "http_error",
+                "message": str(exc.detail)
+            }
+        }
+    )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Returns 422 validation errors in the same consistent format."""
+    return JSONResponse(
+        status_code=422,
+        content={
+            "ok": False,
+            "error": {
+                "type": "validation_error",
+                "message": "One or more fields are invalid.",
+                "details": exc.errors()
+            }
+        }
+    )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Catches unexpected server errors and hides tracebacks from the client."""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "ok": False,
+            "error": {
+                "type": "server_error",
+                "message": "An unexpected server error occurred."
+            }
+        }
+    )
 
 # Database session dependency 
 def get_db():

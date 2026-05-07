@@ -8,10 +8,22 @@ const titleEl = document.getElementById("title");
 const locationEl = document.getElementById("location");
 const severityEl = document.getElementById("severity");
 const addBtn = document.getElementById("addBtn");
+const totalFaultsEl = document.getElementById("totalFaults");
+const openFaultsEl = document.getElementById("openFaults");
+const closedFaultsEl = document.getElementById("closedFaults");
+const highSeverityFaultsEl = document.getElementById("highSeverityFaults");
+
+function updateMetrics(faults) {
+    totalFaultsEl.textContent = faults.length;
+    openFaultsEl.textContent = faults.filter(fault => fault.status === "open").length;
+    closedFaultsEl.textContent = faults.filter(fault => fault.status === "closed").length;
+    highSeverityFaultsEl.textContent = faults.filter(fault => fault.severity === 3).length;
+}
 
 async function refresh() {
     const faults = await getFaults();
     renderFaults(listEl, faults);
+    updateMetrics(faults);
 }
 
 addBtn.addEventListener("click", async () => {

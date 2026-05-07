@@ -16,7 +16,7 @@
   - `GET /api/tools/{id}` → single tool (or 404)
   - `PATCH /api/tools/{id}` → update tool status (checked_in/checked_out)
   - `GET /health` → server health check
-  - *Tool routes (BE-8) are planned but not yet implemented*
+  - **Standard error format** active – all errors return `{ok: false, error: {type, message}}`
 - **Pydantic schemas** include `FaultCreate`, `FaultOut`, `FaultUpdate` and the newly added `ToolCreate`, `ToolOut`, `ToolUpdate`
 - **Dashboard** frontend at `/` shows a form to report faults and a live list
 - **Static files** served from the `static/` folder (JS modules split as `api.js`, `ui.js`, `main.js`)

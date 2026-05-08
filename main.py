@@ -266,3 +266,15 @@ async def log_requests(request, call_next):
     logging.info(f"{request.method} {request.url}")
     response = await call_next(request)
     return response
+
+
+
+# Home page
+@app.get("/")
+def home():
+    return FileResponse("static/index.html")
+
+# AR page
+@app.get("/ar")
+def ar_page():
+    return FileResponse("static/ar.html")

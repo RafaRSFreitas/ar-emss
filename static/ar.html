@@ -69,6 +69,17 @@
       margin: 20px 0;
       border: 0;
       border-top: 1px solid rgba(255,255,255,0.2);
+
+    #scanToolBtn {
+      margin-bottom: 12px;
+    }
+
+
+    #toolInfo {
+      margin-top: 12px;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
     }
   </style>
 </head>
@@ -112,8 +123,9 @@
     <hr>
     <h4>Tool Check</h4>
     <button id="scanToolBtn">Simulate Tool Scan</button>
-    <div id="toolInfo">
-      Tools scanned: 0 / 3
+
+    <div style="margin-top: 12px;" id="toolInfo">
+    Tools scanned: 0 / 3
     </div>
     <ul id="toolList">
       <li>Spanner: missing</li>

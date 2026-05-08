@@ -145,6 +145,29 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+
+const required_tools = [
+  { id: 1, name: "Spanner", scanned = false},
+  { id: 2, name: "Screwdriver", scanned: false },
+  { id: 3, name: "Voltage tester", scanned: false }
+];
+
+let next_tool_index = 0;
+
+function updateToolCheckUI() {
+  const scanned_count = required_tools.filter(tool => tool.scanned).length;
+
+  focument.getElementById("toolInfo").textContent =
+  'Tools scanned: ${scanned_count} / ${required_tools.length}';
+
+  document.getElementById("toolList").innerHTML = required_tools
+    .map(tool => `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`)
+    .join("");
+}
+
+
+
+
 window.addEventListener("resize", () => {
   if (!camera || !renderer) return;
 
@@ -171,7 +194,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const msgEl = document.getElementById("msg");
 
 
-
+// see faults button
   scanFaultBtn.addEventListener("click", async () => {
     current_fault_id = 1;
 
@@ -190,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-// complete fault
+// complete fault button
   closeFaultBtn.addEventListener("click", async () => {
     if (!current_fault_id) return;
 
@@ -207,6 +230,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.error(error);
     }
+
+  const scanToolBtn = document.getElementById("scanToolBtn");
+
+  scanToolBtn.addEventListener("click", () => {
+   if (next_tool_index >= required_tools.length) {
+     return;
+    }
+
+   required_tools[next_tool_index].scanned = true;
+   next_tool_index += 1;
+
+   updateToolCheckUI();
+});
+
+
+
   });
 
   // create a new fault

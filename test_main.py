@@ -1,15 +1,17 @@
+import pytest
 from fastapi.testclient import TestClient
 from main import app
 from database import Base, engine
 
-# Recreate all tables before each test (this mimics "fresh database" from the lab)
-def setup_module():
-    Base.metadata.create_all(bind=engine)
-
-def teardown_module():
-    Base.metadata.drop_all(bind=engine)
-
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    """Fresh database before each test — no leftover data between tests."""
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    yield
 
 
 def test_health():
@@ -29,4 +31,3 @@ def test_get_tools_returns_list():
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 0

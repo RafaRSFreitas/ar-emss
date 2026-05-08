@@ -5,5 +5,8 @@
 __pycache__/
 *.pyc
 
+# pytest cache
+.pytest_cache/
+
 # Database
 *.db

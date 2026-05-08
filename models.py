@@ -12,6 +12,10 @@ class Fault(Base):
     location = Column(String, nullable=False)
     severity = Column(Integer, default=1)
     status = Column(String, nullable=False, default="open")
+    user_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    owner = relationship("User", back_populates="faults")
 
 # Database model for maintenance tools
 class Tool(Base):
@@ -20,10 +24,8 @@ class Tool(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     status = Column(String, nullable=False, default="checked_in")
-    user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    owner = relationship("User", back_populates="faults")
     
 #User model for authentication & access control
 class User(Base):

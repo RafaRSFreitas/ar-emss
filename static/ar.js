@@ -70,43 +70,33 @@ function initThreeScene() {
 
 
 
-function createFaultPanel(fault_data) {
-  if (faultPanel) {
-    scene.remove(faultPanel);
+function createFaultPanel(fault_data, anchor) {
+  if (faultPanel && faultPanel.parent) {
+    faultPanel.parent.remove(faultPanel);
   }
 
-  const geometry = new THREE.BoxGeometry(2.2, 1.1, 0.1);
-
-let colour = 0x00aa00; // Default = low severity (green)
+  const geometry = new THREE.BoxGeometry(0.6, 0.35, 0.05);
+    testBox.position.set(0, 0, 0.05);
+    let colour = 0x00aa00;
 
   if (fault_data.severity === 3) {
-    colour = 0xff0000; // High severity = red
-  } 
-  else if (fault_data.severity === 2) {
-    colour = 0xffaa00; // Medium severity = orange
+    colour = 0xff0000;
+  } else if (fault_data.severity === 2) {
+    colour = 0xffaa00;
   }
 
-  const material = new THREE.MeshBasicMaterial({
-    color: colour
-  });
+const material = new THREE.MeshBasicMaterial({
+  color: 0xff0000,
+  transparent: true,
+  opacity: 0.3,
+  depthWrite: false,
+  side: THREE.DoubleSide
+});
 
   faultPanel = new THREE.Mesh(geometry, material);
-  const marker_positions = {
-    1: { x: -2, y: 0, z: 0 },
-    2: { x: 0, y: 0, z: 0 },
-    3: { x: 2, y: 0, z: 0 }
-  };
+  faultPanel.position.set(0, 0.5, 0);
 
-  const marker_position =
-  marker_positions[current_fault_id] || { x: 0, y: 0, z: 0 };
-
-faultPanel.position.set(
-  marker_position.x,
-  marker_position.y,
-  marker_position.z
-);
-
-  scene.add(faultPanel);
+  anchor.group.add(faultPanel);
 }
 // function createFaultPannel creates the pannel to see the fault "pretty self explanatory lol"... if there is already one open it will close it before opening the new one
 
@@ -246,19 +236,42 @@ async function initARScene() {
 
   const anchor = mindarThree.addAnchor(0);
 
-  anchor.onTargetFound = async () => {
-    current_fault_id = 1;
+anchor.onTargetFound = () => {
+  console.log("Marker detected");
 
-    const fault_data = await getFault(current_fault_id);
+  current_fault_id = 1;
 
-    createFaultPanel(fault_data);
-    updateFaultInfo(fault_data);
-
-    closeFaultBtn.disabled = false;
+  const fault_data = {
+    id: 1,
+    title: "Signal Fault",
+    location: "Platform 2",
+    severity: 3,
+    status: "open"
   };
+
+  updateFaultInfo(fault_data);
+  closeFaultBtn.disabled = false;
+
+  const geometry = new THREE.BoxGeometry(0.6, 0.35, 0.05);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 0.3,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+
+  const testBox = new THREE.Mesh(geometry, material);
+  testBox.position.set(0, 0, 0.05);
+
+  anchor.group.add(testBox);
+};
 
 await mindarThree.start();
 
+renderer.setAnimationLoop(() => {
+  renderer.render(scene, camera);
+});
 document.querySelectorAll(".mindar-ui-loading").forEach((element) => {
   element.style.display = "none";
 });

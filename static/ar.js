@@ -1,78 +1,31 @@
- // stores currently selected fault
-let faultPanel = null;   // stores the 3d box shown in the Tree.js scene
-let scene, camera, renderer;      //objects to display the 3d graphics
-let current_fault_id = null;
 import * as THREE from "three";
 import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
-const AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg0NTA3NzR9.0oIrjkKia0nOjp8FqUW4K4Y4fJd-LU27W7fUfAeN6wg"
-const required_tools = [
+
+// stores currently selected fault
+let faultPanel = null; // stores the 3d box shown in the scene
+let scene, camera, renderer; // objects for the 3d graphics
+let currentFaultId = null;
+let faultAnchor = null;
+let nextToolIndex = 0;
+
+const AUTH_TOKEN =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg0NTA3NzR9.0oIrjkKia0nOjp8FqUW4K4Y4fJd-LU27W7fUfAeN6wg";
+
+const requiredTools = [
   { id: 1, name: "Spanner", scanned: false },
   { id: 2, name: "Screwdriver", scanned: false },
   { id: 3, name: "Voltage tester", scanned: false }
 ];
 
-
-
-
-async function getFault(fault_id) {
-  const response = await fetch(`/api/faults/${fault_id}`, {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  return data;
-}
-// function getFault asks the back end for fault_id and gets the data relating to the fault and returns an error message if there is no fault
-
-async function getTools() {
-  const response = await fetch("/api/tools", {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  return data;
-}
-
-async function getTool(tool_id) {
-  const response = await fetch(`/api/tools/${tool_id}`, {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  return data;
-}
-
-async function updateTool(tool_id, status) {
-  const response = await fetch(`/api/tools/${tool_id}`, {
-    method: "PATCH",
+// this just handles backend requests so i dont repeat fetch 500 times
+async function apiRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
-      status: status
-    })
+      Authorization: `Bearer ${AUTH_TOKEN}`,
+      ...options.headers
+    }
   });
 
   const data = await response.json();
@@ -84,27 +37,50 @@ async function updateTool(tool_id, status) {
   return data;
 }
 
-async function updateFault(fault_id, status) {
-  const response = await fetch(`/api/faults/${fault_id}`, {
+// asks backend for a fault and returns it
+async function getFault(faultId) {
+  return apiRequest(`/api/faults/${faultId}`);
+}
+
+// gets all tools
+async function getTools() {
+  return apiRequest("/api/tools");
+}
+
+// gets one tool
+async function getTool(toolId) {
+  return apiRequest(`/api/tools/${toolId}`);
+}
+
+// updates tool status in backend
+async function updateTool(toolId, status) {
+  return apiRequest(`/api/tools/${toolId}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
+    body: JSON.stringify({ status })
+  });
+}
+
+// updates fault status from frontend to backend
+async function updateFault(faultId, status) {
+  return apiRequest(`/api/faults/${faultId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status })
+  });
+}
+
+// creates a new fault from user input
+async function createFault(title, location, severity) {
+  return apiRequest("/api/faults", {
+    method: "POST",
     body: JSON.stringify({
-      status: status
+      title,
+      location,
+      severity
     })
   });
-
-  if (!response.ok) {
-    throw new Error("Could not update fault");
-  }
-
-  return response.json();
 }
-// funtion updateFault will update the fault status in the backend from the front end, so user can mark fault as fixed changing the status to closed
 
-
-
+// sets up the normal 3d scene
 function initThreeScene() {
   scene = new THREE.Scene();
 
@@ -132,85 +108,52 @@ function initThreeScene() {
 
   animate();
 }
-// this function sets up the AR 3D scence and alters the view for the user to see the scene better with camera angle, lighting and a grid to map out the space
 
-
-
-function createFaultPanel(fault_data, anchor) {
-
+// creates the fault panel thing
+function createFaultPanel(faultData, anchor = faultAnchor) {
   if (faultPanel && faultPanel.parent) {
     faultPanel.parent.remove(faultPanel);
   }
 
   const geometry = new THREE.BoxGeometry(0.6, 0.35, 0.05);
-    faultPanel.position.set(0, 0, 0.05);
-    let colour = 0x00aa00;
 
-  if (fault_data.severity === 3) {
+  let colour = 0x00aa00;
+
+  if (faultData.severity === 3) {
     colour = 0xff0000;
-  } else if (fault_data.severity === 2) {
+  } else if (faultData.severity === 2) {
     colour = 0xffaa00;
   }
 
-const material = new THREE.MeshBasicMaterial({
-  color: 0xff0000,
-  transparent: true,
-  opacity: 0.3,
-  depthWrite: false,
-  side: THREE.DoubleSide
-});
+  const material = new THREE.MeshBasicMaterial({
+    color: colour,
+    transparent: true,
+    opacity: 0.3,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
 
   faultPanel = new THREE.Mesh(geometry, material);
   faultPanel.position.set(0, 0.5, 0);
 
-  anchor.group.add(faultPanel);
+  if (anchor) {
+    anchor.group.add(faultPanel);
+  } else {
+    scene.add(faultPanel);
+  }
 }
-// function createFaultPannel creates the pannel to see the fault "pretty self explanatory lol"... if there is already one open it will close it before opening the new one
 
-
-
-function updateFaultInfo(fault_data) {
+// updates the fault info box shown to user
+function updateFaultInfo(faultData) {
   document.getElementById("faultInfo").innerHTML = `
-    <strong>${fault_data.title}</strong><br>
-    Location: ${fault_data.location}<br>
-    Severity: ${fault_data.severity}<br>
-    Status: ${fault_data.status}
+    <strong>${faultData.title}</strong><br>
+    Location: ${faultData.location}<br>
+    Severity: ${faultData.severity}<br>
+    Status: ${faultData.status}
   `;
 }
-// shows the user the correct fault info, basically updating the table that they are shwon
 
-
-
-async function createFault(title, location, severity) {
-  
-  const response = await fetch("/api/faults", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
-      title: title,
-      location: location,
-      severity: severity
-    })
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  return data;
-}
-// creates a new fault for an item by first taking user input sending it to FastAPI, where the fault is created
-
-
-
-
-
-
+// rotates the fault panel so it looks cool i guess
 function animate() {
   requestAnimationFrame(animate);
 
@@ -221,31 +164,35 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-
-let next_tool_index = 0;
-
+// updates tool checklist ui
 function updateToolCheckUI() {
-  const scanned_count = required_tools.filter(tool => tool.scanned).length;
+  const scannedCount = requiredTools.filter(
+    (tool) => tool.scanned
+  ).length;
 
-  document.getElementById("toolInfo").textContent =
-    `Tools scanned: ${scanned_count} / ${required_tools.length}`;
+  document.getElementById(
+    "toolInfo"
+  ).textContent = `Tools scanned: ${scannedCount} / ${requiredTools.length}`;
 
-  document.getElementById("toolList").innerHTML = required_tools
-    .map(tool =>
-      `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`
+  document.getElementById("toolList").innerHTML = requiredTools
+    .map(
+      (tool) =>
+        `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`
     )
     .join("");
 }
-// ============================================================================================================
+
+// fake markers for testing
 function createSimulatedMarkers() {
-  const marker_positions = {
+  const markerPositions = {
     1: { x: -2, y: -1.2, z: 0 },
     2: { x: 0, y: -1.2, z: 0 },
     3: { x: 2, y: -1.2, z: 0 }
   };
 
-  Object.entries(marker_positions).forEach(([id, position]) => {
+  Object.entries(markerPositions).forEach(([id, position]) => {
     const geometry = new THREE.PlaneGeometry(0.8, 0.8);
+
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       wireframe: true
@@ -256,12 +203,15 @@ function createSimulatedMarkers() {
     marker.position.set(position.x, position.y, position.z);
 
     scene.add(marker);
+
     const label = createTextSprite(`Marker ${id}`);
     label.position.set(position.x, position.y + 0.7, position.z);
+
     scene.add(label);
   });
 }
-// -------------------------------------------------------------------------
+
+// makes text labels for markers
 function createTextSprite(text) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
@@ -275,15 +225,19 @@ function createTextSprite(text) {
   context.fillText(text, 128, 64);
 
   const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.SpriteMaterial({ map: texture });
+
+  const material = new THREE.SpriteMaterial({
+    map: texture
+  });
+
   const sprite = new THREE.Sprite(material);
 
   sprite.scale.set(1.5, 0.75, 1);
 
   return sprite;
 }
-// =========================================================================================================
 
+// starts the AR scene
 async function initARScene() {
   console.log("initARScene started");
 
@@ -297,87 +251,90 @@ async function initARScene() {
   camera = mindarThree.camera;
 
   const anchor = mindarThree.addAnchor(0);
+  faultAnchor = anchor;
 
-anchor.onTargetFound = async () => {
-  console.log("Marker detected");
+  // main fault marker
+  anchor.onTargetFound = async () => {
+    console.log("Marker detected");
 
-  current_fault_id = 1;
-
-  try {
-    const fault_data = await getFault(current_fault_id);
-
-    updateFaultInfo(fault_data);
-    closeFaultBtn.disabled = false;
-
-    createFaultPanel(fault_data, anchor);
-
-  } catch (error) {
-    document.getElementById("faultInfo").innerText =
-      "Could not load fault from backend.";
-
-    console.error(error);
-  }
-};
-
-await mindarThree.start();
-
-
-const toolMarkerMap = {
-  1: 1, // marker target 1 = tool ID 1 Spanner
-  2: 2, // marker target 2 = tool ID 2 Screwdriver
-  3: 3  // marker target 3 = tool ID 3 Voltage tester
-};
-
-Object.entries(toolMarkerMap).forEach(([marker_index, tool_id]) => {
-  const toolAnchor = mindarThree.addAnchor(Number(marker_index));
-
-  toolAnchor.onTargetFound = async () => {
-    console.log(`Tool marker ${marker_index} detected`);
+    currentFaultId = 1;
 
     try {
-      const tool_data = await updateTool(tool_id, "checked_out");
+      const faultData = await getFault(currentFaultId);
 
-      const matching_tool = required_tools.find(tool => tool.id === tool_id);
+      updateFaultInfo(faultData);
+      document.getElementById("closeFaultBtn").disabled = false;
 
-      if (matching_tool) {
-        matching_tool.scanned = true;
-      }
-
-      updateToolCheckUI();
-
-      console.log("Tool updated:", tool_data);
+      createFaultPanel(faultData, anchor);
     } catch (error) {
-      console.error("Could not update tool:", error);
+      document.getElementById("faultInfo").innerText =
+        "Could not load fault from backend.";
+
+      console.error(error);
     }
   };
-});
 
+  await mindarThree.start();
 
+  // tool markers
+  const toolMarkerMap = {
+    1: 1,
+    2: 2,
+    3: 3
+  };
 
+  Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
+    const toolAnchor = mindarThree.addAnchor(Number(markerIndex));
 
-renderer.setAnimationLoop(() => {
-  renderer.render(scene, camera);
-});
-document.querySelectorAll(".mindar-ui-loading").forEach((element) => {
-  element.style.display = "none";
-});
+    toolAnchor.onTargetFound = async () => {
+      console.log(`Tool marker ${markerIndex} detected`);
 
-console.log("MindAR started");
+      try {
+        const toolData = await updateTool(toolId, "checked_out");
 
-setTimeout(() => {
-  document.querySelectorAll(
-    ".mindar-ui-loading, .mindar-ui-overlay, .mindar-ui-scanning"
-  ).forEach((element) => {
-    element.style.display = "none";
+        const matchingTool = requiredTools.find(
+          (tool) => tool.id === toolId
+        );
+
+        if (matchingTool) {
+          matchingTool.scanned = true;
+        }
+
+        updateToolCheckUI();
+
+        console.log("Tool updated:", toolData);
+      } catch (error) {
+        console.error("Could not update tool:", error);
+      }
+    };
   });
-}, 5);
 
+  renderer.setAnimationLoop(() => {
+    renderer.render(scene, camera);
+  });
+
+  // hides loading ui
+  document
+    .querySelectorAll(".mindar-ui-loading")
+    .forEach((element) => {
+      element.style.display = "none";
+    });
+
+  setTimeout(() => {
+    document
+      .querySelectorAll(
+        ".mindar-ui-loading, .mindar-ui-overlay, .mindar-ui-scanning"
+      )
+      .forEach((element) => {
+        element.style.display = "none";
+      });
+  }, 5);
+
+  console.log("MindAR started");
   console.log("Camera started");
 }
 
-
-
-
+// keeps screen resizing properly
 window.addEventListener("resize", () => {
   if (!camera || !renderer) return;
 
@@ -387,35 +344,33 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-
-
-
+// runs when page loads
 document.addEventListener("DOMContentLoaded", () => {
   initARScene();
   updateToolCheckUI();
- // createSimulatedMarkers();
-
 
   const closeFaultBtn = document.getElementById("closeFaultBtn");
-
+  const scanToolBtn = document.getElementById("scanToolBtn");
 
   const titleEl = document.getElementById("title");
   const locationEl = document.getElementById("location");
   const severityEl = document.getElementById("severity");
+
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
 
-
-
-// complete fault button
+  // closes fault
   closeFaultBtn.addEventListener("click", async () => {
-    if (!current_fault_id) return;
+    if (!currentFaultId) return;
 
     try {
-      const updated_fault_data = await updateFault(current_fault_id, "closed");
+      const updatedFaultData = await updateFault(
+        currentFaultId,
+        "closed"
+      );
 
-      createFaultPanel(updated_fault_data);
-      updateFaultInfo(updated_fault_data);
+      createFaultPanel(updatedFaultData);
+      updateFaultInfo(updatedFaultData);
 
       closeFaultBtn.disabled = true;
     } catch (error) {
@@ -424,25 +379,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.error(error);
     }
-
-  const scanToolBtn = document.getElementById("scanToolBtn");
-
-  scanToolBtn.addEventListener("click", () => {
-   if (next_tool_index >= required_tools.length) {
-     return;
-    }
-
-   required_tools[next_tool_index].scanned = true;
-   next_tool_index += 1;
-
-   updateToolCheckUI();
-});
-
-
-
   });
 
-  // create a new fault
+  // fake tool scanner button
+  scanToolBtn.addEventListener("click", () => {
+    if (nextToolIndex >= requiredTools.length) {
+      return;
+    }
+
+    requiredTools[nextToolIndex].scanned = true;
+    nextToolIndex += 1;
+
+    updateToolCheckUI();
+  });
+
+  // adds a new fault
   addBtn.addEventListener("click", async () => {
     msgEl.textContent = "";
 
@@ -451,42 +402,51 @@ document.addEventListener("DOMContentLoaded", () => {
       const location = locationEl.value.trim();
       const severity = parseInt(severityEl.value);
 
-      const created_fault = await createFault(title, location, severity);
+      const createdFault = await createFault(
+        title,
+        location,
+        severity
+      );
 
-      msgEl.textContent = `Created fault ID: ${created_fault.id}`;
+      msgEl.textContent = `Created fault ID: ${createdFault.id}`;
 
       titleEl.value = "";
       locationEl.value = "";
       severityEl.value = "low";
 
-      current_fault_id = created_fault.id;
+      currentFaultId = createdFault.id;
 
-      createFaultPanel(created_fault);
-      updateFaultInfo(created_fault);
+      createFaultPanel(createdFault);
+      updateFaultInfo(createdFault);
 
       closeFaultBtn.disabled = false;
     } catch (error) {
       msgEl.textContent = "Error: " + error.message;
+
       console.error(error);
     }
   });
-  const markerButtons = document.querySelectorAll(".markerBtn")
+
+  // manual marker buttons
+  const markerButtons = document.querySelectorAll(".markerBtn");
+
   markerButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      current_fault_id = parseInt(button.dataset.faultId);
-    try {
-      const fault_data = await getFault(current_fault_id);
+      currentFaultId = parseInt(button.dataset.faultId);
 
-      createFaultPanel(fault_data);
-      updateFaultInfo(fault_data);
+      try {
+        const faultData = await getFault(currentFaultId);
 
-      closeFaultBtn.disabled = false;
-    } catch (error) {
-      document.getElementById("faultInfo").innerText =
-        "Could not load fault from backend.";
+        createFaultPanel(faultData);
+        updateFaultInfo(faultData);
 
-      console.error(error);
-    }
+        closeFaultBtn.disabled = false;
+      } catch (error) {
+        document.getElementById("faultInfo").innerText =
+          "Could not load fault from backend.";
+
+        console.error(error);
+      }
+    });
   });
-}); 
-    })
+});

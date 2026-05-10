@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supervisor Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 24px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #f5f5f5;
+      color: #333;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .nav-links a {
+      margin-left: 16px;
+      font-size: 14px;
+      color: #0077cc;
+      text-decoration: none;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: #555;
+    }
+    .card .value {
+      font-size: 32px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .muted { color: #666; font-size: 14px; }
+    button {
+      font-size: 14px;
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+    button:hover { background: #f0f0f0; }
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .spinner {
+      border: 4px solid #eee;
+      border-top: 4px solid #0077cc;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-banner {
+      background: #ffe6e6;
+      border: 1px solid #cc3333;
+      color: #cc3333;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .hidden { display: none; }
+    .login-prompt {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Supervisor Dashboard</h1>
+    <div>
+      <button id="refreshBtn">Refresh</button>
+      <span class="nav-links">
+        <a href="/">Tracker</a>
+        <a href="/ar">AR View</a>
+      </span>
+    </div>
+  </header>
+
+  <!-- Login prompt (shown if no token) -->
+  <div id="loginPrompt" class="login-prompt hidden">
+    <p>Please <a href="/">log in</a> first to view the dashboard.</p>
+  </div>
+
+  <!-- Error banner (hidden until needed) -->
+  <div id="errorBanner" class="error-banner hidden"></div>
+
+  <!-- Loading spinner -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading metrics…</p>
+  </div>
+
+  <!-- Main content (hidden until data is loaded) -->
+  <div id="content" class="hidden">
+    <h2>Faults</h2>
+    <div class="grid" id="faultMetrics"></div>
+
+    <h2 style="margin-top: 28px;">Tools</h2>
+    <div class="grid" id="toolMetrics"></div>
+  </div>
+
+  <script>
+    // ---------- Helpers (match your REL-1 error shape) ----------
+    function getAuthHeaders() {
+      const token = localStorage.getItem("token");
+      if (!token) return { "Content-Type": "application/json" };
+      return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+    }
+
+    async function parseJson(res) {
+      const data = await res.json();
+      if (!res.ok) {
+        const message = data?.error?.message || data?.detail || "Request failed";
+        throw new Error(message);
+      }
+      return data;
+    }
+
+    function showError(message) {
+      const banner = document.getElementById('errorBanner');
+      banner.textContent = message;
+      banner.classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('errorBanner').classList.add('hidden');
+    }
+
+    function renderMetricCards(containerId, items) {
+      const container = document.getElementById(containerId);
+      let html = '';
+      items.forEach(item => {
+        html += `
+          <div class="card">
+            <h3>${item.label}</h3>
+            <p class="value">${item.value}</p>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    async function loadDashboard() {
+      hideError();
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById('loginPrompt').classList.add('hidden');
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        document.getElementById('loginPrompt').classList.remove('hidden');
+        document.getElementById('loading').classList.add('hidden');
+        return;
+      }
+
+      try {
+        // Fetch faults and tools in parallel
+        const [allFaults, allTools] = await Promise.all([
+          parseJson(await fetch('/api/faults', { headers: getAuthHeaders() })),
+          parseJson(await fetch('/api/tools', { headers: getAuthHeaders() }))
+        ]);
+
+        // Calculate fault stats
+        const openFaults = allFaults.filter(f => f.status === 'open').length;
+        const closedFaults = allFaults.length - openFaults;
+
+        // Calculate tool stats
+        const checkedOutTools = allTools.filter(t => t.status === 'checked_out').length;
+        const checkedInTools = allTools.length - checkedOutTools;
+
+        // Render fault cards
+        renderMetricCards('faultMetrics', [
+          { label: 'Total Faults', value: allFaults.length },
+          { label: 'Open Faults', value: openFaults },
+          { label: 'Closed Faults', value: closedFaults }
+        ]);
+
+        // Render tool cards
+        renderMetricCards('toolMetrics', [
+          { label: 'Total Tools', value: allTools.length },
+          { label: 'Checked In', value: checkedInTools },
+          { label: 'Checked Out', value: checkedOutTools }
+        ]);
+
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      }
+    }
+
+    // Initial load
+    loadDashboard();
+
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+  </script>
+</body>
+</html>

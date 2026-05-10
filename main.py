@@ -282,3 +282,8 @@ def home():
 @app.get("/ar")
 def ar_page():
     return FileResponse("static/ar.html")
+
+# Supervisor Dashboard page
+@app.get("/dashboard")
+def dashboard_page():
+    return FileResponse("static/dashboard.html")

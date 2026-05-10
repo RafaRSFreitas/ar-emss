@@ -15,60 +15,73 @@
     </style>
 </head>
 <body>
-    <h1>Fault Tracker</h1>
-    <p class="muted">AR Maintenance System – Dashboard</p>
-    <p class="muted">
-        <a href="/dashboard">Supervisor Dashboard</a> |
-        <a href="/ar">Open AR View</a>
-    </p> 
-    <div class="card">
-        <h2>Login</h2>
-        <input id="username" placeholder="Username" />
-        <input id="password" type="password" placeholder="Password" />
-        <button id="loginBtn" type="button">Login</button>
-        <pre id="loginMsg"></pre>
-    </div>
-    
-    <div class="card">
-        <h2>Report Fault</h2>
-        <div class="row">
-            <input id="title" placeholder="Title (e.g., 'Side Crack')" />
-            <input id="location" placeholder="Location (e.g., 'Bay 3')" />
+
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" style="
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 100;
+    ">
+        <div style="background: white; padding: 32px; border-radius: 12px; width: 320px;">
+            <h2 style="margin-top:0">Login</h2>
+            <input id="username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+            <input id="password" type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+            <button id="loginBtn" type="button" style="width:100%; padding:10px; cursor:pointer;">Login</button>
+            <pre id="loginMsg" style="color:red; font-size:13px;"></pre>
         </div>
-        <input id="severity" type="number" min="1" max="3" value="1" />
-        <button id="addBtn" type="button">Report Fault</button>
-        <pre id="msg"></pre>
     </div>
 
-    <div class="card">
-        <h2>Dashboard Metrics</h2>
+    <!-- DASHBOARD (hidden until login) -->
+    <div id="dashboard" style="display: none;">
 
-        <p>Total Faults: <span id="totalFaults">0</span></p>
-        <p>Open Faults: <span id="openFaults">0</span></p>
-        <p>Closed Faults: <span id="closedFaults">0</span></p>
-        <p>High Severity Faults: <span id="highSeverityFaults">0</span></p>
-    </div>     
-    
+        <h1>Fault Tracker</h1>
+        <p class="muted">AR Maintenance System – Dashboard</p>
+        <p class="muted">
+            <a href="/dashboard">Supervisor Dashboard</a> |
+            <a href="/ar">Open AR View</a>
+        </p>
+
         <div class="card">
-        <h2>Recent Activity</h2>
-        <div id="activityLog">
-            <p>No recent activity</p>
+            <h2>Report Fault</h2>
+            <div class="row">
+                <input id="title" placeholder="Title (e.g., 'Side Crack')" />
+                <input id="location" placeholder="Location (e.g., 'Bay 3')" />
+            </div>
+            <input id="severity" type="number" min="1" max="3" value="1" />
+            <button id="addBtn" type="button">Report Fault</button>
+            <pre id="msg"></pre>
         </div>
-    </div>
 
-
-    <div class="card">
-        <h2>Security Monitoring</h2>
-        <div id="securityMonitor">
-            <p>No suspicious activity detected</p>
+        <div class="card">
+            <h2>Dashboard Metrics</h2>
+            <p>Total Faults: <span id="totalFaults">0</span></p>
+            <p>Open Faults: <span id="openFaults">0</span></p>
+            <p>Closed Faults: <span id="closedFaults">0</span></p>
+            <p>High Severity Faults: <span id="highSeverityFaults">0</span></p>
         </div>
-    </div>
 
+        <div class="card">
+            <h2>Recent Activity</h2>
+            <div id="activityLog">
+                <p>No recent activity</p>
+            </div>
+        </div>
 
-    <div class="card">
-        <h2>Faults</h2>
-        <div id="list"></div>
+        <div class="card">
+            <h2>Security Monitoring</h2>
+            <div id="securityMonitor">
+                <p>No suspicious activity detected</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Faults</h2>
+            <div id="list"></div>
+        </div>
+
     </div>
+    <!-- END DASHBOARD -->
 
     <script type="module" src="/static/main.js"></script>
 </body>

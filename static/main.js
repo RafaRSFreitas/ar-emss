@@ -82,8 +82,9 @@ logoutBtn.addEventListener("click", () => {
     showLogin();
 });
 
-loginBtn.addEventListener("click", async () => {
-  loginMsg.textContent = "";
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  loginMsg.textContent = "";                                                
   try {
     const username = usernameEl.value.trim();
     const password = passwordEl.value.trim();

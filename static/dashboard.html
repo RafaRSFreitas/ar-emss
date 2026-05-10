@@ -83,53 +83,78 @@
       margin-bottom: 16px;
     }
     .hidden { display: none; }
-    .login-prompt {
+
+    #loginOverlay button {
+      font-size: 16px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
+    }
+
+    #loginOverlay input {
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Supervisor Dashboard</h1>
-    <div>
-      <button id="refreshBtn">Refresh</button>
-      <span class="nav-links">
-          <a href="/">Tracker</a>
-          <a href="/ar">AR View</a>
-          <a href="#" id="logoutBtn">Logout</a>
-      </span>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay" style="
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+  ">
+      <div style="background: white; padding: 32px; border-radius: 12px; width: 320px;">
+          <form id="loginForm">
+              <h2 style="margin-top:0">Login</h2>
+              <input id="username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+              <input id="password" type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+              <button type="submit" style="width:100%; padding:10px; cursor:pointer;">Login</button>
+              <pre id="loginMsg" style="color:red; font-size:13px;"></pre>
+          </form>
+      </div>
+  </div>
+
+  <!-- DASHBOARD (hidden until login) -->
+  <div id="dashboardContent" style="display: none;">
+
+    <header>
+      <h1>Supervisor Dashboard</h1>
+      <div>
+        <button id="refreshBtn">Refresh</button>
+        <span class="nav-links">
+            <a href="/">Tracker</a>
+            <a href="/ar">AR View</a>
+            <a href="#" id="logoutBtn">Logout</a>
+        </span>
+      </div>
+    </header>
+
+    <!-- Error banner (hidden until needed) -->
+    <div id="errorBanner" class="error-banner hidden"></div>
+
+    <!-- Loading spinner -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading metrics…</p>
     </div>
-  </header>
 
-  <!-- Login prompt (shown if no token) -->
-  <div id="loginPrompt" class="login-prompt hidden">
-    <p>Please <a href="/">log in</a> first to view the dashboard.</p>
+    <!-- Main content (hidden until data is loaded) -->
+    <div id="content" class="hidden">
+      <h2>Faults</h2>
+      <div class="grid" id="faultMetrics"></div>
+
+      <h2 style="margin-top: 28px;">Tools</h2>
+      <div class="grid" id="toolMetrics"></div>
+    </div>
+
   </div>
-
-  <!-- Error banner (hidden until needed) -->
-  <div id="errorBanner" class="error-banner hidden"></div>
-
-  <!-- Loading spinner -->
-  <div id="loading" class="loading">
-    <div class="spinner"></div>
-    <p>Loading metrics…</p>
-  </div>
-
-  <!-- Main content (hidden until data is loaded) -->
-  <div id="content" class="hidden">
-    <h2>Faults</h2>
-    <div class="grid" id="faultMetrics"></div>
-
-    <h2 style="margin-top: 28px;">Tools</h2>
-    <div class="grid" id="toolMetrics"></div>
-  </div>
+  <!-- END DASHBOARD -->
 
   <script>
-    // ---------- Helpers (match your REL-1 error shape) ----------
+    // ---------- Helpers ----------
     function getAuthHeaders() {
       const token = localStorage.getItem("token");
       if (!token) return { "Content-Type": "application/json" };
@@ -175,38 +200,24 @@
       hideError();
       document.getElementById('loading').classList.remove('hidden');
       document.getElementById('content').classList.add('hidden');
-      document.getElementById('loginPrompt').classList.add('hidden');
-
-      const token = localStorage.getItem("token");
-      if (!token) {
-        document.getElementById('loginPrompt').classList.remove('hidden');
-        document.getElementById('loading').classList.add('hidden');
-        return;
-      }
 
       try {
-        // Fetch faults and tools in parallel
         const [allFaults, allTools] = await Promise.all([
           parseJson(await fetch('/api/faults', { headers: getAuthHeaders() })),
           parseJson(await fetch('/api/tools', { headers: getAuthHeaders() }))
         ]);
 
-        // Calculate fault stats
         const openFaults = allFaults.filter(f => f.status === 'open').length;
         const closedFaults = allFaults.length - openFaults;
-
-        // Calculate tool stats
         const checkedOutTools = allTools.filter(t => t.status === 'checked_out').length;
         const checkedInTools = allTools.length - checkedOutTools;
 
-        // Render fault cards
         renderMetricCards('faultMetrics', [
           { label: 'Total Faults', value: allFaults.length },
           { label: 'Open Faults', value: openFaults },
           { label: 'Closed Faults', value: closedFaults }
         ]);
 
-        // Render tool cards
         renderMetricCards('toolMetrics', [
           { label: 'Total Tools', value: allTools.length },
           { label: 'Checked In', value: checkedInTools },
@@ -221,17 +232,56 @@
       }
     }
 
-    // Initial load
-    loadDashboard();
+    // ---------- Login gate ----------
+    function showLogin() {
+      document.getElementById("loginOverlay").style.display = "flex";
+      document.getElementById("dashboardContent").style.display = "none";
+      localStorage.removeItem("token");
+    }
 
-    // Refresh button
+    function showDashboard() {
+      document.getElementById("loginOverlay").style.display = "none";
+      document.getElementById("dashboardContent").style.display = "block";
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      document.getElementById("loginMsg").textContent = "";
+      try {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Login failed");
+
+        localStorage.setItem("token", data.access_token);
+        showDashboard();
+        loadDashboard();
+      } catch (err) {
+        document.getElementById("loginMsg").textContent = "Error: " + err.message;
+      }
+    });
+
+    // ---------- Refresh and logout ----------
     document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
 
-    // Logout button
     document.getElementById('logoutBtn').addEventListener('click', () => {
-        localStorage.removeItem("token");
-        window.location.href = "/";
+      showLogin();
     });
+
+    // ---------- Initialisation ----------
+    if (localStorage.getItem("token")) {
+      showDashboard();
+      loadDashboard();
+    } else {
+      showLogin();
+    }
   </script>
 </body>
 </html>

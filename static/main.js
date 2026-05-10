@@ -8,10 +8,15 @@ const titleEl = document.getElementById("title");
 const locationEl = document.getElementById("location");
 const severityEl = document.getElementById("severity");
 const addBtn = document.getElementById("addBtn");
+const usernameEl = document.getElementById("username");
+const passwordEl = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
+const loginMsg = document.getElementById("loginMsg");
 const totalFaultsEl = document.getElementById("totalFaults");
 const openFaultsEl = document.getElementById("openFaults");
 const closedFaultsEl = document.getElementById("closedFaults");
 const highSeverityFaultsEl = document.getElementById("highSeverityFaults");
+
 
 function updateMetrics(faults) {
     totalFaultsEl.textContent = faults.length;
@@ -25,6 +30,38 @@ async function refresh() {
     renderFaults(listEl, faults);
     updateMetrics(faults);
 }
+
+loginBtn.addEventListener("click", async () => {
+    loginMsg.textContent = "";
+
+    try {
+        const username = usernameEl.value.trim();
+        const password = passwordEl.value.trim();
+
+        const res = await fetch("/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || "Login failed");
+        }
+
+        localStorage.setItem("token", data.access_token);
+
+        loginMsg.textContent = "Login successful";
+    } catch (err) {
+        loginMsg.textContent = "Error: " + err.message;
+    }
+});
 
 addBtn.addEventListener("click", async () => {
     msgEl.textContent = "";

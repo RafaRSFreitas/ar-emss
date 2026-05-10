@@ -10,7 +10,7 @@ export function renderFaults(container, faults) {
             <span class="muted">
                 Location: ${escapeHtml(f.location)} · 
                 Severity: ${f.severity} · 
-                Status: ${f.status}
+                Status: ${f.status === "closed" ? "resolved" : f.status}
             </span>
 
             <div style="margin-top:10px;">

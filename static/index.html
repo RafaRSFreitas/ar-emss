@@ -138,13 +138,15 @@
     <!-- DASHBOARD (hidden until login) -->
     <div id="dashboard" style="display: none;">
 
-        <h1>Fault Tracker</h1>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1 style="margin:0;">Fault Tracker</h1>
+            <p class="muted" style="margin:0;">
+                <a href="/dashboard">Supervisor Dashboard</a> |
+                <a href="/ar">Open AR View</a> |
+                <a href="#" id="logoutBtn">Logout</a>
+            </p>
+        </div>
         <p class="muted">AR Maintenance System – Dashboard</p>
-        <p class="muted">
-            <a href="/dashboard">Supervisor Dashboard</a> |
-            <a href="/ar">Open AR View</a> |
-            <a href="#" id="logoutBtn">Logout</a>
-        </p>
 
         <div class="card">
             <h2>Report Fault</h2>

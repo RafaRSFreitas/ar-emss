@@ -15,6 +15,7 @@ const titleEl      = document.getElementById("title");
 const locationEl   = document.getElementById("location");
 const severityEl   = document.getElementById("severity");
 const addBtn       = document.getElementById("addBtn");
+const logoutBtn    = document.getElementById("logoutBtn");
 
 const totalFaultsEl        = document.getElementById("totalFaults");
 const openFaultsEl         = document.getElementById("openFaults");
@@ -75,7 +76,12 @@ function forceLogin() {
   showLogin();
 }
 
-// --- Login button -------------------------------------------------
+// --- Login and logout buttons -------------------------------------------------
+logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    showLogin();
+});
+
 loginBtn.addEventListener("click", async () => {
   loginMsg.textContent = "";
   try {
@@ -120,7 +126,3 @@ addBtn.addEventListener("click", async () => {
 // --- Initialisation -----------------------------------------------
 checkAuth();
 
-localStorage.setItem("token", data.access_token);
-console.log("token saved, calling showApp");  // add this line
-showApp();
-await refresh();

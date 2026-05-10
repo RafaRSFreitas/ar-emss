@@ -1,7 +1,6 @@
 let currentFaultId = null; // stores currently selected fault
-let faultPannel = null;   // stores the 3d box shown in the Tree.js scene
+let faultPanel = null;   // stores the 3d box shown in the Tree.js scene
 let scene, camera, renderer;      //objects to display the 3d graphics
-
 
 
 async function getFault(fault_id) {
@@ -90,7 +89,20 @@ let colour = 0x00aa00; // Default = low severity (green)
   });
 
   faultPanel = new THREE.Mesh(geometry, material);
-  faultPanel.position.set(0, 0, 0);
+  const marker_positions = {
+    1: { x: -2, y: 0, z: 0 },
+    2: { x: 0, y: 0, z: 0 },
+    3: { x: 2, y: 0, z: 0 }
+  };
+
+  const marker_position =
+  marker_positions[current_fault_id] || { x: 0, y: 0, z: 0 };
+
+faultPanel.position.set(
+  marker_position.x,
+  marker_position.y,
+  marker_position.z
+);
 
   scene.add(faultPanel);
 }
@@ -170,10 +182,53 @@ function updateToolCheckUI() {
     )
     .join("");
 }
+// ============================================================================================================
+function createSimulatedMarkers() {
+  const marker_positions = {
+    1: { x: -2, y: -1.2, z: 0 },
+    2: { x: 0, y: -1.2, z: 0 },
+    3: { x: 2, y: -1.2, z: 0 }
+  };
 
+  Object.entries(marker_positions).forEach(([id, position]) => {
+    const geometry = new THREE.PlaneGeometry(0.8, 0.8);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      wireframe: true
+    });
 
+    const marker = new THREE.Mesh(geometry, material);
 
+    marker.position.set(position.x, position.y, position.z);
 
+    scene.add(marker);
+    const label = createTextSprite(`Marker ${id}`);
+    label.position.set(position.x, position.y + 0.7, position.z);
+    scene.add(label);
+  });
+}
+// -------------------------------------------------------------------------
+function createTextSprite(text) {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  canvas.width = 256;
+  canvas.height = 128;
+
+  context.fillStyle = "white";
+  context.font = "32px Arial";
+  context.textAlign = "center";
+  context.fillText(text, 128, 64);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(material);
+
+  sprite.scale.set(1.5, 0.75, 1);
+
+  return sprite;
+}
+// =========================================================================================================
 window.addEventListener("resize", () => {
   if (!camera || !renderer) return;
 
@@ -188,7 +243,7 @@ window.addEventListener("resize", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   initThreeScene();
-
+  createSimulatedMarkers();
   const scanFaultBtn = document.getElementById("scanFaultBtn");
   const closeFaultBtn = document.getElementById("closeFaultBtn");
 
@@ -282,4 +337,23 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(error);
     }
   });
-});
+  const markerButtons = document.querySelectorAll(".markerBtn")
+  markerButtons.forEach((button) => {
+    button.add.EventListener("click", async () => {
+      current_fault_id = parseInt(button.dataset.faultId);
+    try {
+      const fault_data = await getFault(current_fault_id);
+
+      createFaultPanel(fault_data);
+      updateFaultInfo(fault_data);
+
+      closeFaultBtn.disabled = false;
+    } catch (error) {
+      document.getElementById("faultInfo").innerText =
+        "Could not load fault from backend.";
+
+      console.error(error);
+    }
+  });
+}); 
+    })

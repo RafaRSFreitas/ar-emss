@@ -1,4 +1,4 @@
-import { getFaults, addFault } from "./api.js";
+import { getFaults, addFault, updateFaultStatus, deleteFault } from "./api.js";
 import { renderFaults } from "./ui.js";
 
 // --- DOM elements -------------------------------------------------
@@ -44,6 +44,53 @@ async function refresh() {
     }
   }
 }
+
+// --- Status & Delete button handler ---------------------------------
+listEl.addEventListener("click", async (e) => {
+  const statusBtn = e.target.closest(".statusBtn");
+  const delBtn = e.target.closest(".deleteBtn");
+
+  if (statusBtn) {
+    const faultId = parseInt(statusBtn.dataset.id, 10);
+    const nextStatus = statusBtn.dataset.next;
+
+    try {
+      msgEl.textContent = "";
+      statusBtn.disabled = true;
+
+      await updateFaultStatus(faultId, nextStatus);
+      await refresh();
+    } catch (err) {
+      msgEl.textContent = "Error: " + err.message;
+      if (err.message === "Login required") {
+        forceLogin();
+      }
+    } finally {
+      statusBtn.disabled = false;
+    }
+  }
+
+  if (delBtn) {
+    const faultId = parseInt(delBtn.dataset.id, 10);
+
+    if (!confirm("Are you sure you want to delete this fault?")) return;
+
+    try {
+      msgEl.textContent = "";
+      delBtn.disabled = true;
+
+      await deleteFault(faultId);
+      await refresh();
+    } catch (err) {
+      msgEl.textContent = "Error: " + err.message;
+      if (err.message === "Login required") {
+        forceLogin();
+      }
+    } finally {
+      delBtn.disabled = false;
+    }
+  }
+});
 
 // --- Authentication gatekeeper ------------------------------------
 function showLogin() {

@@ -5,13 +5,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fault Tracker</title>
     <style>
-        body { font-family: system-ui, Arial; margin: 16px; max-width: 720px; }
-        .card { padding: 12px; border: 1px solid #ddd; border-radius: 12px; margin: 10px 0; }
-        input, button { font-size: 16px; padding: 10px; width: 100%; margin: 6px 0; }
-        button { cursor: pointer; }
-        .row { display: grid; gap: 10px; grid-template-columns: 1fr; }
-        @media (min-width: 640px) { .row { grid-template-columns: 1fr 1fr; } }
-        .muted { color: #666; font-size: 14px; }
+        /* Global */
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            margin: 1rem;
+            max-width: 1100px;
+            margin-left: auto;
+            margin-right: auto;
+            background: #f5f5f5;
+            color: #333;
+            font-size: 1rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem;
+        }
+        h2 {
+            font-size: 1.25rem;
+            margin: 0.5rem 0;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        /* Buttons & Inputs */
+        button {
+            font-size: 0.875rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            width: auto; /* reset default width:100% */
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+        input, select {
+            font-size: 1rem;
+            padding: 0.625rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            box-sizing: border-box;
+        }
+
+        /* Muted text */
+        .muted {
+            color: #666;
+            font-size: 0.875rem;
+        }
+
+        /* Grid row for side-by-side inputs */
+        .row {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 640px) {
+            .row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Login overlay – match dashboard style */
+        #loginOverlay > div {
+            width: 90%;
+            max-width: 320px;
+            padding: 2rem;
+        }
+        #loginOverlay button {
+            font-size: 1rem;
+            padding: 0.625rem;
+            width: 100%;
+        }
+        #loginOverlay input {
+            font-size: 1rem;
+            padding: 0.625rem;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none;
+        }
+
+        /* Mobile refinement */
+        @media (max-width: 640px) {
+            body {
+                margin: 0.5rem;
+            }
+            h1 {
+                font-size: 1.25rem;
+            }
+            h2 {
+                font-size: 1rem;
+            }
+            .card {
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -23,13 +124,13 @@
         display: flex; align-items: center; justify-content: center;
         z-index: 100;
     ">
-        <div style="background: white; padding: 32px; border-radius: 12px; width: 320px;">
+        <div style="background: white; border-radius: 12px;">
             <form id="loginForm">
                 <h2 style="margin-top:0">Login</h2>
-                <input id="username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
-                <input id="password" type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
-                <button type="submit" style="width:100%; padding:10px; cursor:pointer;">Login</button>
-                <pre id="loginMsg" style="color:red; font-size:13px;"></pre>
+                <input id="username" placeholder="Username" />
+                <input id="password" type="password" placeholder="Password" />
+                <button type="submit">Login</button>
+                <pre id="loginMsg" style="color:red; font-size:0.8125rem;"></pre>
             </form>
         </div>
     </div>
@@ -37,13 +138,15 @@
     <!-- DASHBOARD (hidden until login) -->
     <div id="dashboard" style="display: none;">
 
-        <h1>Fault Tracker</h1>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1 style="margin:0;">Fault Tracker</h1>
+            <p class="muted" style="margin:0;">
+                <a href="/dashboard">Supervisor Dashboard</a> |
+                <a href="/ar">Open AR View</a> |
+                <a href="#" id="logoutBtn">Logout</a>
+            </p>
+        </div>
         <p class="muted">AR Maintenance System – Dashboard</p>
-        <p class="muted">
-            <a href="/dashboard">Supervisor Dashboard</a> |
-            <a href="/ar">Open AR View</a> |
-            <a href="#" id="logoutBtn">Logout</a>
-        </p>
 
         <div class="card">
             <h2>Report Fault</h2>
@@ -51,7 +154,11 @@
                 <input id="title" placeholder="Title (e.g., 'Side Crack')" />
                 <input id="location" placeholder="Location (e.g., 'Bay 3')" />
             </div>
-            <input id="severity" type="number" min="1" max="3" value="1" />
+            <select id="severity">
+                <option value="1">Low</option>
+                <option value="2">Medium</option>
+                <option value="3">High</option>
+            </select>
             <button id="addBtn" type="button">Report Fault</button>
             <pre id="msg"></pre>
         </div>
@@ -60,7 +167,7 @@
             <h2>Dashboard Metrics</h2>
             <p>Total Faults: <span id="totalFaults">0</span></p>
             <p>Open Faults: <span id="openFaults">0</span></p>
-            <p>Closed Faults: <span id="closedFaults">0</span></p>
+            <p>Resolved Faults: <span id="closedFaults">0</span></p>
             <p>High Severity Faults: <span id="highSeverityFaults">0</span></p>
         </div>
 

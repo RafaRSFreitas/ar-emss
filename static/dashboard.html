@@ -98,8 +98,9 @@
     <div>
       <button id="refreshBtn">Refresh</button>
       <span class="nav-links">
-        <a href="/">Tracker</a>
-        <a href="/ar">AR View</a>
+          <a href="/">Tracker</a>
+          <a href="/ar">AR View</a>
+          <a href="#" id="logoutBtn">Logout</a>
       </span>
     </div>
   </header>
@@ -225,6 +226,12 @@
 
     // Refresh button
     document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+
+    // Logout button
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+    });
   </script>
 </body>
 </html>

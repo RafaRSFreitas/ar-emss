@@ -1,7 +1,9 @@
-let currentFaultId = null; // stores currently selected fault
+ // stores currently selected fault
 let faultPanel = null;   // stores the 3d box shown in the Tree.js scene
 let scene, camera, renderer;      //objects to display the 3d graphics
-
+let current_fault_id = null;
+import * as THREE from "three";
+import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
 
 async function getFault(fault_id) {
   const response = await fetch(`/api/faults/${fault_id}`);
@@ -229,6 +231,54 @@ function createTextSprite(text) {
   return sprite;
 }
 // =========================================================================================================
+
+async function initARScene() {
+  console.log("initARScene started");
+
+  const mindarThree = new MindARThree({
+    container: document.body,
+    imageTargetSrc: "/static/targets.mind"
+  });
+
+  renderer = mindarThree.renderer;
+  scene = mindarThree.scene;
+  camera = mindarThree.camera;
+
+  const anchor = mindarThree.addAnchor(0);
+
+  anchor.onTargetFound = async () => {
+    current_fault_id = 1;
+
+    const fault_data = await getFault(current_fault_id);
+
+    createFaultPanel(fault_data);
+    updateFaultInfo(fault_data);
+
+    closeFaultBtn.disabled = false;
+  };
+
+await mindarThree.start();
+
+document.querySelectorAll(".mindar-ui-loading").forEach((element) => {
+  element.style.display = "none";
+});
+
+console.log("MindAR started");
+
+setTimeout(() => {
+  document.querySelectorAll(
+    ".mindar-ui-loading, .mindar-ui-overlay, .mindar-ui-scanning"
+  ).forEach((element) => {
+    element.style.display = "none";
+  });
+}, 5);
+
+  console.log("Camera started");
+}
+
+
+
+
 window.addEventListener("resize", () => {
   if (!camera || !renderer) return;
 
@@ -242,8 +292,9 @@ window.addEventListener("resize", () => {
 
 
 document.addEventListener("DOMContentLoaded", () => {
-  initThreeScene();
-  createSimulatedMarkers();
+  initARScene();
+ // createSimulatedMarkers();
+
   const scanFaultBtn = document.getElementById("scanFaultBtn");
   const closeFaultBtn = document.getElementById("closeFaultBtn");
 
@@ -257,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // see faults button
   scanFaultBtn.addEventListener("click", async () => {
-    current_fault_id = 1;
+
 
     try {
       const fault_data = await getFault(current_fault_id);
@@ -339,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const markerButtons = document.querySelectorAll(".markerBtn")
   markerButtons.forEach((button) => {
-    button.add.EventListener("click", async () => {
+    button.addEventListener("click", async () => {
       current_fault_id = parseInt(button.dataset.faultId);
     try {
       const fault_data = await getFault(current_fault_id);

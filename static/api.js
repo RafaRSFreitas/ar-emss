@@ -1,5 +1,3 @@
-// static/api.js
-
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
 
@@ -46,5 +44,24 @@ export async function updateFault(fault_id, status) {
 
   if (!res.ok) throw new Error(JSON.stringify(data));
 
+  return data;
+}
+
+export async function updateFaultStatus(faultId, status) {
+  const res = await fetch(`/api/faults/${faultId}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status })
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem("token");
+    throw new Error("Login required");
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error?.message || JSON.stringify(data));
+  }
   return data;
 }

@@ -1,4 +1,4 @@
-import { getFaults, addFault } from "./api.js";
+import { getFaults, addFault, updateFaultStatus } from "./api.js";
 import { renderFaults } from "./ui.js";
 
 // --- DOM elements -------------------------------------------------
@@ -44,6 +44,32 @@ async function refresh() {
     }
   }
 }
+
+// --- Status button handler (Resolve/Reopen) ------------------------
+listEl.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".statusBtn");
+  if (!btn) return;
+
+  const faultId = parseInt(btn.dataset.id, 10);
+  const nextStatus = btn.dataset.next; // "closed" or "open"
+
+  try {
+    msgEl.textContent = "";
+    btn.disabled = true;
+
+    await updateFaultStatus(faultId, nextStatus);
+    await refresh(); // reload list + metrics
+
+  } catch (err) {
+    // if token expired / invalid, your api.js may throw "Login required"
+    msgEl.textContent = "Error: " + err.message;
+    if (err.message === "Login required") {
+      forceLogin();
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // --- Authentication gatekeeper ------------------------------------
 function showLogin() {

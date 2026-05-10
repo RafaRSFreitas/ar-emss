@@ -5,55 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Supervisor Dashboard</title>
   <style>
+    /* Use rem for scalable spacing */
+    html {
+      font-size: 16px; /* base */
+    }
     body {
       font-family: system-ui, Arial, sans-serif;
-      margin: 24px;
-      max-width: 900px;
+      margin: 1rem;
+      max-width: 1100px;
       margin-left: auto;
       margin-right: auto;
       background: #f5f5f5;
       color: #333;
+      font-size: 1rem;
     }
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 24px;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    h2 {
+      font-size: 1.25rem;
+    }
+    h3 {
+      font-size: 1rem;
+    }
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
     .nav-links a {
-      margin-left: 16px;
-      font-size: 14px;
+      font-size: 0.875rem;
       color: #0077cc;
       text-decoration: none;
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
+      gap: 1rem;
+    }
+    .grid-cols-4 {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    .grid-cols-3 {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    .grid-cols-2 {
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
     .card {
       background: white;
       border: 1px solid #ddd;
       border-radius: 12px;
-      padding: 20px;
+      padding: 1.25rem;
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    .card h3 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-      color: #555;
+    .stat-card {
+      text-align: center;
     }
-    .card .value {
-      font-size: 32px;
-      font-weight: 600;
+    .stat-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.875rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-card .value {
+      font-size: 2.25rem;
+      font-weight: 700;
       margin: 0;
+      color: #111;
     }
-    .muted { color: #666; font-size: 14px; }
     button {
-      font-size: 14px;
-      padding: 8px 16px;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
       border: 1px solid #ccc;
       border-radius: 8px;
       background: white;
@@ -62,38 +98,92 @@
     button:hover { background: #f0f0f0; }
     .loading {
       text-align: center;
-      padding: 40px;
+      padding: 2.5rem;
     }
     .spinner {
       border: 4px solid #eee;
       border-top: 4px solid #0077cc;
       border-radius: 50%;
-      width: 30px;
-      height: 30px;
+      width: 2rem;
+      height: 2rem;
       animation: spin 1s linear infinite;
-      margin: 0 auto 12px;
+      margin: 0 auto 0.75rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-banner {
       background: #ffe6e6;
       border: 1px solid #cc3333;
       color: #cc3333;
-      padding: 12px 16px;
+      padding: 0.75rem 1rem;
       border-radius: 8px;
-      margin-bottom: 16px;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
     }
     .hidden { display: none; }
 
     #loginOverlay button {
-      font-size: 16px;
-      padding: 10px;
+      font-size: 1rem;
+      padding: 0.625rem;
       border: 1px solid #ccc;
       border-radius: 8px;
       background: white;
     }
-
     #loginOverlay input {
-      font-size: 16px;
+      font-size: 1rem;
+      padding: 0.625rem;
+    }
+    .timestamp {
+      font-size: 0.75rem;
+      color: #999;
+    }
+    .chart-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-width: 100%; /* ensure no overflow */
+      aspect-ratio: 1/1;
+    }
+    .glance-card {
+      text-align: left;
+      width: 100%;
+    }
+    .glance-card p {
+      margin: 0.25rem 0;
+    }
+    /* Mobile adjustments */
+    @media (max-width: 640px) {
+      body {
+        margin: 0.5rem;
+      }
+      .grid-cols-4 {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      }
+      .stat-card .value {
+        font-size: 1.75rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      h2 {
+        font-size: 1rem;
+      }
+      canvas {
+        max-width: 220px; /* slightly smaller on mobile */
+      }
+    }
+    /* Extra small screens */
+    @media (max-width: 400px) {
+      .grid-cols-4 {
+        grid-template-columns: 1fr 1fr;
+      }
+      canvas {
+        max-width: 180px;
+      }
     }
   </style>
 </head>
@@ -106,13 +196,13 @@
       display: flex; align-items: center; justify-content: center;
       z-index: 100;
   ">
-      <div style="background: white; padding: 32px; border-radius: 12px; width: 320px;">
+      <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 320px; width: 90%;">
           <form id="loginForm">
-              <h2 style="margin-top:0">Login</h2>
-              <input id="username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
-              <input id="password" type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
-              <button type="submit" style="width:100%; padding:10px; cursor:pointer;">Login</button>
-              <pre id="loginMsg" style="color:red; font-size:13px;"></pre>
+              <h2 style="margin-top:0; font-size: 1.5rem;">Login</h2>
+              <input id="username" placeholder="Username" style="width:100%; padding:0.625rem; margin-bottom:0.5rem; box-sizing:border-box; font-size:1rem;" />
+              <input id="password" type="password" placeholder="Password" style="width:100%; padding:0.625rem; margin-bottom:0.5rem; box-sizing:border-box; font-size:1rem;" />
+              <button type="submit" style="width:100%; padding:0.625rem; cursor:pointer; font-size:1rem;">Login</button>
+              <pre id="loginMsg" style="color:red; font-size:0.8125rem; white-space: pre-wrap; word-break: break-word;"></pre>
           </form>
       </div>
   </div>
@@ -121,8 +211,9 @@
   <div id="dashboardContent" style="display: none;">
 
     <header>
-      <h1>Supervisor Dashboard</h1>
-      <div>
+      <h1>Maintenance Supervisor Dashboard</h1>
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <span class="timestamp" id="lastUpdated"></span>
         <button id="refreshBtn">Refresh</button>
         <span class="nav-links">
             <a href="/">Tracker</a>
@@ -132,7 +223,7 @@
       </div>
     </header>
 
-    <!-- Error banner (hidden until needed) -->
+    <!-- Error banner -->
     <div id="errorBanner" class="error-banner hidden"></div>
 
     <!-- Loading spinner -->
@@ -141,17 +232,50 @@
       <p>Loading metrics…</p>
     </div>
 
-    <!-- Main content (hidden until data is loaded) -->
+    <!-- Main content -->
     <div id="content" class="hidden">
-      <h2>Faults</h2>
-      <div class="grid" id="faultMetrics"></div>
 
-      <h2 style="margin-top: 28px;">Tools</h2>
-      <div class="grid" id="toolMetrics"></div>
+      <h2>Fault Overview</h2>
+      <div class="grid grid-cols-4" id="faultMetrics"></div>
+
+      <div class="grid grid-cols-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <h3>Fault Status</h3>
+          <div class="chart-container">
+            <canvas id="faultStatusChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Severity Distribution</h3>
+          <div class="chart-container">
+            <canvas id="severityChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 2.25rem;">Tool Inventory</h2>
+      <div class="grid grid-cols-3" id="toolMetrics"></div>
+
+      <div class="grid grid-cols-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <h3>Tool Availability</h3>
+          <div class="chart-container">
+            <canvas id="toolChart"></canvas>
+          </div>
+        </div>
+        <div class="card glance-card">
+          <h3>At a Glance</h3>
+          <div style="font-size: 0.9375rem; line-height: 1.6; color: #555;">
+            <p><strong>Total Faults:</strong> <span id="glanceTotalFaults"></span></p>
+            <p><strong>Open / Resolved:</strong> <span id="glanceFaultRatio"></span></p>
+            <p><strong>High Severity:</strong> <span id="glanceHighSev"></span></p>
+            <p><strong>Tools Checked Out:</strong> <span id="glanceToolsOut"></span></p>
+          </div>
+        </div>
+      </div>
+
     </div>
-
   </div>
-  <!-- END DASHBOARD -->
 
   <script>
     // ---------- Helpers ----------
@@ -183,18 +307,152 @@
       document.getElementById('errorBanner').classList.add('hidden');
     }
 
-    function renderMetricCards(containerId, items) {
-      const container = document.getElementById(containerId);
-      let html = '';
-      items.forEach(item => {
-        html += `
-          <div class="card">
-            <h3>${item.label}</h3>
-            <p class="value">${item.value}</p>
-          </div>`;
-      });
-      container.innerHTML = html;
+    // ---------- Custom Canvas Charts (High-DPI aware) ----------
+    function setupCanvas(canvas) {
+      const ctx = canvas.getContext('2d');
+      const container = canvas.parentElement;
+      const style = window.getComputedStyle(container);
+      const containerWidth = container.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      // Limit max size to 280px (or smaller on mobile via CSS max-width)
+      const size = Math.min(containerWidth, 280);
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = size * dpr;
+      canvas.height = size * dpr;
+      canvas.style.width = size + 'px';
+      canvas.style.height = size + 'px';
+      ctx.scale(dpr, dpr);
+      return { width: size, height: size, ctx };
     }
+
+    function drawDoughnutChart(canvasId, data, labels, colors) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const { width, height, ctx } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, width, height);
+
+      if (data.reduce((a,b)=>a+b,0) === 0) {
+        ctx.font = '14px system-ui, Arial';
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data', width/2, height/2);
+        return;
+      }
+
+      const centerX = width / 2;
+      const centerY = height / 2 - 10;
+      const outerRadius = Math.min(width, height) / 2 - 20;
+      const innerRadius = outerRadius * 0.6;
+
+      let startAngle = -Math.PI/2;
+      for (let i=0; i<data.length; i++) {
+        const sliceAngle = (data[i]/data.reduce((a,b)=>a+b,0)) * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outerRadius, startAngle, startAngle+sliceAngle);
+        ctx.arc(centerX, centerY, innerRadius, startAngle+sliceAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = colors[i];
+        ctx.fill();
+        startAngle += sliceAngle;
+      }
+
+      // Center total
+      ctx.font = `bold ${Math.floor(width/20)}px system-ui, Arial`;
+      ctx.fillStyle = '#111';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(data.reduce((a,b)=>a+b,0), centerX, centerY);
+
+      // Legend
+      const legendY = height - 10;
+      ctx.font = `${Math.floor(width/25)}px system-ui, Arial`;
+      let totalTextWidth = labels.reduce((sum, l) => sum + ctx.measureText(l).width + 30, 0);
+      let legendX = (width - totalTextWidth) / 2;
+      for (let i=0; i<labels.length; i++) {
+        ctx.fillStyle = colors[i];
+        ctx.fillRect(legendX, legendY - 8, 10, 10);
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'left';
+        ctx.fillText(labels[i], legendX + 15, legendY);
+        legendX += ctx.measureText(labels[i]).width + 30;
+      }
+    }
+
+    function drawBarChart(canvasId, data, labels, colors) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const { width, height, ctx } = setupCanvas(canvas);
+      ctx.clearRect(0, 0, width, height);
+
+      const maxVal = Math.max(...data, 1);
+      const marginLeft = 35;
+      const marginRight = 20;
+      const marginBottom = 30;
+      const marginTop = 20;
+      const chartWidth = width - marginLeft - marginRight;
+      const chartHeight = height - marginTop - marginBottom;
+
+      // Axes
+      ctx.beginPath();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.moveTo(marginLeft, marginTop);
+      ctx.lineTo(marginLeft, height - marginBottom);
+      ctx.lineTo(width - marginRight, height - marginBottom);
+      ctx.stroke();
+
+      // Y labels
+      ctx.font = `${Math.floor(width/25)}px system-ui, Arial`;
+      ctx.fillStyle = '#666';
+      ctx.textAlign = 'right';
+      for (let i=0; i<=maxVal; i+= Math.ceil(maxVal/4) || 1) {
+        const y = height - marginBottom - (i/maxVal) * chartHeight;
+        ctx.fillText(i, marginLeft - 8, y + 3);
+        ctx.beginPath();
+        ctx.strokeStyle = '#eee';
+        ctx.moveTo(marginLeft, y);
+        ctx.lineTo(width - marginRight, y);
+        ctx.stroke();
+      }
+
+      // Bars
+      const barSpacing = 16;
+      const barWidth = (chartWidth - (barSpacing * (data.length - 1))) / data.length;
+      for (let i=0; i<data.length; i++) {
+        const barH = (data[i]/maxVal) * chartHeight;
+        const x = marginLeft + i*(barWidth + barSpacing);
+        const y = height - marginBottom - barH;
+        ctx.fillStyle = colors[i];
+        ctx.fillRect(x, y, barWidth, barH);
+
+        // Value
+        ctx.font = `${Math.floor(width/25)}px system-ui, Arial`;
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(data[i], x + barWidth/2, y - 5);
+
+        // Label
+        ctx.fillStyle = '#555';
+        ctx.fillText(labels[i], x + barWidth/2, height - marginBottom + 15);
+      }
+    }
+
+    // Store chart data for redrawing on resize/zoom
+    let chartData = null;
+
+    function redrawAllCharts() {
+      if (!chartData) return;
+      const { openFaults, closedFaults, lowSev, medSev, highSev, checkedInTools, checkedOutTools } = chartData;
+      drawDoughnutChart('faultStatusChart', [openFaults, closedFaults], ['Open', 'Resolved'], ['#cc3333', '#33aa33']);
+      drawBarChart('severityChart', [lowSev, medSev, highSev], ['Low', 'Medium', 'High'], ['#33aa33', '#ffcc00', '#cc3333']);
+      drawDoughnutChart('toolChart', [checkedInTools, checkedOutTools], ['Checked In', 'Checked Out'], ['#0066cc', '#cc8800']);
+    }
+
+    // Debounced resize handler
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(redrawAllCharts, 150);
+    });
 
     async function loadDashboard() {
       hideError();
@@ -209,26 +467,48 @@
 
         const openFaults = allFaults.filter(f => f.status === 'open').length;
         const closedFaults = allFaults.length - openFaults;
+        const lowSev = allFaults.filter(f => f.severity === 1).length;
+        const medSev = allFaults.filter(f => f.severity === 2).length;
+        const highSev = allFaults.filter(f => f.severity === 3).length;
         const checkedOutTools = allTools.filter(t => t.status === 'checked_out').length;
         const checkedInTools = allTools.length - checkedOutTools;
 
-        renderMetricCards('faultMetrics', [
-          { label: 'Total Faults', value: allFaults.length },
-          { label: 'Open Faults', value: openFaults },
-          { label: 'Closed Faults', value: closedFaults }
-        ]);
+        // Store for redraws
+        chartData = { openFaults, closedFaults, lowSev, medSev, highSev, checkedInTools, checkedOutTools };
 
-        renderMetricCards('toolMetrics', [
-          { label: 'Total Tools', value: allTools.length },
-          { label: 'Checked In', value: checkedInTools },
-          { label: 'Checked Out', value: checkedOutTools }
-        ]);
+        // Metric cards
+        document.getElementById('faultMetrics').innerHTML = `
+          <div class="card stat-card"><h3>Total</h3><div class="value">${allFaults.length}</div></div>
+          <div class="card stat-card"><h3>Open</h3><div class="value" style="color:#cc3333;">${openFaults}</div></div>
+          <div class="card stat-card"><h3>Resolved</h3><div class="value" style="color:#33aa33;">${closedFaults}</div></div>
+          <div class="card stat-card"><h3>High Severity</h3><div class="value" style="color:#ff8800;">${highSev}</div></div>
+        `;
+        document.getElementById('toolMetrics').innerHTML = `
+          <div class="card stat-card"><h3>Total Tools</h3><div class="value">${allTools.length}</div></div>
+          <div class="card stat-card"><h3>Checked In</h3><div class="value" style="color:#0066cc;">${checkedInTools}</div></div>
+          <div class="card stat-card"><h3>Checked Out</h3><div class="value" style="color:#cc8800;">${checkedOutTools}</div></div>
+        `;
+
+        // Glance card
+        document.getElementById('glanceTotalFaults').textContent = allFaults.length;
+        document.getElementById('glanceFaultRatio').textContent = `${openFaults} / ${closedFaults}`;
+        document.getElementById('glanceHighSev').textContent = highSev;
+        document.getElementById('glanceToolsOut').textContent = checkedOutTools;
+
+        // Show content first to get container sizes
+        document.getElementById('content').classList.remove('hidden');
+
+        // Draw charts after layout
+        requestAnimationFrame(() => {
+          redrawAllCharts();
+          document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+        });
 
       } catch (err) {
         showError(err.message);
+        document.getElementById('content').classList.remove('hidden');
       } finally {
         document.getElementById('loading').classList.add('hidden');
-        document.getElementById('content').classList.remove('hidden');
       }
     }
 
@@ -250,16 +530,13 @@
       try {
         const username = document.getElementById("username").value.trim();
         const password = document.getElementById("password").value.trim();
-
         const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password })
         });
-
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Login failed");
-
         localStorage.setItem("token", data.access_token);
         showDashboard();
         loadDashboard();
@@ -268,14 +545,10 @@
       }
     });
 
-    // ---------- Refresh and logout ----------
     document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+    document.getElementById('logoutBtn').addEventListener('click', showLogin);
 
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      showLogin();
-    });
-
-    // ---------- Initialisation ----------
+    // Initialisation
     if (localStorage.getItem("token")) {
       showDashboard();
       loadDashboard();

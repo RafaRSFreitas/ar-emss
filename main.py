@@ -97,14 +97,14 @@ def verify_token(token=Depends(security)):
 # ---------- FAULT ROUTES ----------
 
 @app.get("/api/faults", response_model=list[FaultOut])
-def list_faults(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_faults(status: Optional[str] = None, db: Session = Depends(get_db), user=Depends(verify_token)):
     query = db.query(Fault)
     if status in ("open", "closed"):
         query = query.filter(Fault.status == status)
     return query.all()
 
 @app.get("/api/faults/{fault_id}", response_model=FaultOut)
-def get_fault(fault_id: int, db: Session = Depends(get_db)):
+def get_fault(fault_id: int, db: Session = Depends(get_db), user=Depends(verify_token)):
     fault = db.query(Fault).filter(Fault.id == fault_id).first()
     if fault is None:
         raise HTTPException(status_code=404, detail="Fault not found")
@@ -113,6 +113,10 @@ def get_fault(fault_id: int, db: Session = Depends(get_db)):
 @app.post("/api/faults", response_model=FaultOut, status_code=201)
 def create_fault(payload: FaultCreate, db: Session = Depends(get_db), user=Depends(verify_token)):
     db_user = db.query(User).filter(User.username == user["sub"]).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     new_fault = Fault(
         title=payload.title,
         location=payload.location,
@@ -127,7 +131,7 @@ def create_fault(payload: FaultCreate, db: Session = Depends(get_db), user=Depen
     return new_fault
 
 @app.patch("/api/faults/{fault_id}", response_model=FaultOut)
-def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_db)):
+def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_db), user=Depends(verify_token)):
     fault = db.query(Fault).filter(Fault.id == fault_id).first()
     if fault is None:
         raise HTTPException(status_code=404, detail="Fault not found")
@@ -140,13 +144,13 @@ def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_
 
 # Tool API endpoints
 @app.get("/api/tools", response_model=list[ToolOut])
-def list_tools(db: Session = Depends(get_db)):
+def list_tools(db: Session = Depends(get_db), user=Depends(verify_token)):
     """Return all tools from the database."""
     return db.query(Tool).all()
 
 
 @app.post("/api/tools", response_model=ToolOut, status_code=201)
-def create_tool(payload: ToolCreate, db: Session = Depends(get_db)):
+def create_tool(payload: ToolCreate, db: Session = Depends(get_db), user=Depends(verify_token)):
     """Create a new tool. Always starts as checked_in."""
     new_tool = Tool(
         name=payload.name,
@@ -161,7 +165,7 @@ def create_tool(payload: ToolCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/api/tools/{tool_id}", response_model=ToolOut)
-def get_tool(tool_id: int, db: Session = Depends(get_db)):
+def get_tool(tool_id: int, db: Session = Depends(get_db), user=Depends(verify_token)):
     """Return a single tool by ID, or 404 if not found."""
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
 
@@ -172,7 +176,7 @@ def get_tool(tool_id: int, db: Session = Depends(get_db)):
 
 
 @app.patch("/api/tools/{tool_id}", response_model=ToolOut)
-def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db)):
+def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db), user=Depends(verify_token)):
     """Update a tool's status (checked_in / checked_out)."""
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
 
@@ -212,7 +216,7 @@ app.add_middleware(
 
 #Password Hashing
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret") #env variables for exposure prevention
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_change_me_to_a_long_random_string_32bytes_min") #env variables for exposure prevention
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -278,3 +282,8 @@ def home():
 @app.get("/ar")
 def ar_page():
     return FileResponse("static/ar.html")
+
+# Supervisor Dashboard page
+@app.get("/dashboard")
+def dashboard_page():
+    return FileResponse("static/dashboard.html")

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supervisor Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      margin: 24px;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #f5f5f5;
+      color: #333;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .nav-links a {
+      margin-left: 16px;
+      font-size: 14px;
+      color: #0077cc;
+      text-decoration: none;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      color: #555;
+    }
+    .card .value {
+      font-size: 32px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .muted { color: #666; font-size: 14px; }
+    button {
+      font-size: 14px;
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+    button:hover { background: #f0f0f0; }
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .spinner {
+      border: 4px solid #eee;
+      border-top: 4px solid #0077cc;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-banner {
+      background: #ffe6e6;
+      border: 1px solid #cc3333;
+      color: #cc3333;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .hidden { display: none; }
+
+    #loginOverlay button {
+      font-size: 16px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+    }
+
+    #loginOverlay input {
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay" style="
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+  ">
+      <div style="background: white; padding: 32px; border-radius: 12px; width: 320px;">
+          <form id="loginForm">
+              <h2 style="margin-top:0">Login</h2>
+              <input id="username" placeholder="Username" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+              <input id="password" type="password" placeholder="Password" style="width:100%; padding:10px; margin-bottom:8px; box-sizing:border-box;" />
+              <button type="submit" style="width:100%; padding:10px; cursor:pointer;">Login</button>
+              <pre id="loginMsg" style="color:red; font-size:13px;"></pre>
+          </form>
+      </div>
+  </div>
+
+  <!-- DASHBOARD (hidden until login) -->
+  <div id="dashboardContent" style="display: none;">
+
+    <header>
+      <h1>Supervisor Dashboard</h1>
+      <div>
+        <button id="refreshBtn">Refresh</button>
+        <span class="nav-links">
+            <a href="/">Tracker</a>
+            <a href="/ar">AR View</a>
+            <a href="#" id="logoutBtn">Logout</a>
+        </span>
+      </div>
+    </header>
+
+    <!-- Error banner (hidden until needed) -->
+    <div id="errorBanner" class="error-banner hidden"></div>
+
+    <!-- Loading spinner -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading metrics…</p>
+    </div>
+
+    <!-- Main content (hidden until data is loaded) -->
+    <div id="content" class="hidden">
+      <h2>Faults</h2>
+      <div class="grid" id="faultMetrics"></div>
+
+      <h2 style="margin-top: 28px;">Tools</h2>
+      <div class="grid" id="toolMetrics"></div>
+    </div>
+
+  </div>
+  <!-- END DASHBOARD -->
+
+  <script>
+    // ---------- Helpers ----------
+    function getAuthHeaders() {
+      const token = localStorage.getItem("token");
+      if (!token) return { "Content-Type": "application/json" };
+      return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+    }
+
+    async function parseJson(res) {
+      const data = await res.json();
+      if (!res.ok) {
+        const message = data?.error?.message || data?.detail || "Request failed";
+        throw new Error(message);
+      }
+      return data;
+    }
+
+    function showError(message) {
+      const banner = document.getElementById('errorBanner');
+      banner.textContent = message;
+      banner.classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('errorBanner').classList.add('hidden');
+    }
+
+    function renderMetricCards(containerId, items) {
+      const container = document.getElementById(containerId);
+      let html = '';
+      items.forEach(item => {
+        html += `
+          <div class="card">
+            <h3>${item.label}</h3>
+            <p class="value">${item.value}</p>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    async function loadDashboard() {
+      hideError();
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('content').classList.add('hidden');
+
+      try {
+        const [allFaults, allTools] = await Promise.all([
+          parseJson(await fetch('/api/faults', { headers: getAuthHeaders() })),
+          parseJson(await fetch('/api/tools', { headers: getAuthHeaders() }))
+        ]);
+
+        const openFaults = allFaults.filter(f => f.status === 'open').length;
+        const closedFaults = allFaults.length - openFaults;
+        const checkedOutTools = allTools.filter(t => t.status === 'checked_out').length;
+        const checkedInTools = allTools.length - checkedOutTools;
+
+        renderMetricCards('faultMetrics', [
+          { label: 'Total Faults', value: allFaults.length },
+          { label: 'Open Faults', value: openFaults },
+          { label: 'Closed Faults', value: closedFaults }
+        ]);
+
+        renderMetricCards('toolMetrics', [
+          { label: 'Total Tools', value: allTools.length },
+          { label: 'Checked In', value: checkedInTools },
+          { label: 'Checked Out', value: checkedOutTools }
+        ]);
+
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      }
+    }
+
+    // ---------- Login gate ----------
+    function showLogin() {
+      document.getElementById("loginOverlay").style.display = "flex";
+      document.getElementById("dashboardContent").style.display = "none";
+      localStorage.removeItem("token");
+    }
+
+    function showDashboard() {
+      document.getElementById("loginOverlay").style.display = "none";
+      document.getElementById("dashboardContent").style.display = "block";
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      document.getElementById("loginMsg").textContent = "";
+      try {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Login failed");
+
+        localStorage.setItem("token", data.access_token);
+        showDashboard();
+        loadDashboard();
+      } catch (err) {
+        document.getElementById("loginMsg").textContent = "Error: " + err.message;
+      }
+    });
+
+    // ---------- Refresh and logout ----------
+    document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      showLogin();
+    });
+
+    // ---------- Initialisation ----------
+    if (localStorage.getItem("token")) {
+      showDashboard();
+      loadDashboard();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>

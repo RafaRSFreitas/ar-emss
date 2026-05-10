@@ -47,6 +47,23 @@ export async function updateFault(fault_id, status) {
   return data;
 }
 
+export async function deleteFault(faultId) {
+  const res = await fetch(`/api/faults/${faultId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders()
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem("token");
+    throw new Error("Login required");
+  }
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error?.message || "Failed to delete fault");
+  }
+}
+
 export async function updateFaultStatus(faultId, status) {
   const res = await fetch(`/api/faults/${faultId}`, {
     method: "PATCH",

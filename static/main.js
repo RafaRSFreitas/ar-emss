@@ -1,4 +1,4 @@
-import { getFaults, addFault, updateFaultStatus } from "./api.js";
+import { getFaults, addFault, updateFaultStatus, deleteFault } from "./api.js";
 import { renderFaults } from "./ui.js";
 
 // --- DOM elements -------------------------------------------------
@@ -45,29 +45,50 @@ async function refresh() {
   }
 }
 
-// --- Status button handler (Resolve/Reopen) ------------------------
+// --- Status & Delete button handler ---------------------------------
 listEl.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".statusBtn");
-  if (!btn) return;
+  const statusBtn = e.target.closest(".statusBtn");
+  const delBtn = e.target.closest(".deleteBtn");
 
-  const faultId = parseInt(btn.dataset.id, 10);
-  const nextStatus = btn.dataset.next; // "closed" or "open"
+  if (statusBtn) {
+    const faultId = parseInt(statusBtn.dataset.id, 10);
+    const nextStatus = statusBtn.dataset.next;
 
-  try {
-    msgEl.textContent = "";
-    btn.disabled = true;
+    try {
+      msgEl.textContent = "";
+      statusBtn.disabled = true;
 
-    await updateFaultStatus(faultId, nextStatus);
-    await refresh(); // reload list + metrics
-
-  } catch (err) {
-    // if token expired / invalid, your api.js may throw "Login required"
-    msgEl.textContent = "Error: " + err.message;
-    if (err.message === "Login required") {
-      forceLogin();
+      await updateFaultStatus(faultId, nextStatus);
+      await refresh();
+    } catch (err) {
+      msgEl.textContent = "Error: " + err.message;
+      if (err.message === "Login required") {
+        forceLogin();
+      }
+    } finally {
+      statusBtn.disabled = false;
     }
-  } finally {
-    btn.disabled = false;
+  }
+
+  if (delBtn) {
+    const faultId = parseInt(delBtn.dataset.id, 10);
+
+    if (!confirm("Are you sure you want to delete this fault?")) return;
+
+    try {
+      msgEl.textContent = "";
+      delBtn.disabled = true;
+
+      await deleteFault(faultId);
+      await refresh();
+    } catch (err) {
+      msgEl.textContent = "Error: " + err.message;
+      if (err.message === "Login required") {
+        forceLogin();
+      }
+    } finally {
+      delBtn.disabled = false;
+    }
   }
 });
 

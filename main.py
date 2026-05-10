@@ -140,6 +140,17 @@ def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_
     db.refresh(fault)
     return fault
 
+# ---------- DELETE FAULT ----------
+
+@app.delete("/api/faults/{fault_id}", status_code=204)
+def delete_fault(fault_id: int, db: Session = Depends(get_db), user=Depends(verify_token)):
+    fault = db.query(Fault).filter(Fault.id == fault_id).first()
+    if fault is None:
+        raise HTTPException(status_code=404, detail="Fault not found")
+    db.delete(fault)
+    db.commit()
+    return
+
 # ---------- TOOL ROUTES ----------
 
 # Tool API endpoints

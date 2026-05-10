@@ -76,12 +76,13 @@ function createFaultPanel(fault_data) {
 
   const geometry = new THREE.BoxGeometry(2.2, 1.1, 0.1);
 
-  let colour = 0x00aa00;
+let colour = 0x00aa00; // Default = low severity (green)
 
-  if (fault_data.severity === "high") {
-    colour = 0xff0000;
-  } else if (fault_data.severity === "medium") {
-    colour = 0xffaa00;
+  if (fault_data.severity === 3) {
+    colour = 0xff0000; // High severity = red
+  } 
+  else if (fault_data.severity === 2) {
+    colour = 0xffaa00; // Medium severity = orange
   }
 
   const material = new THREE.MeshBasicMaterial({
@@ -122,11 +123,13 @@ async function createFault(title, location, severity) {
     })
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error("Could not create fault");
+    throw new Error(JSON.stringify(data));
   }
 
-  return response.json();
+  return data;
 }
 // creates a new fault for an item by first taking user input sending it to FastAPI, where the fault is created
 
@@ -145,9 +148,8 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-
 const required_tools = [
-  { id: 1, name: "Spanner", scanned = false},
+  { id: 1, name: "Spanner", scanned: false },
   { id: 2, name: "Screwdriver", scanned: false },
   { id: 3, name: "Voltage tester", scanned: false }
 ];
@@ -155,13 +157,17 @@ const required_tools = [
 let next_tool_index = 0;
 
 function updateToolCheckUI() {
-  const scanned_count = required_tools.filter(tool => tool.scanned).length;
+  const scanned_count = required_tools.filter(
+    tool => tool.scanned
+  ).length;
 
-  focument.getElementById("toolInfo").textContent =
-  'Tools scanned: ${scanned_count} / ${required_tools.length}';
+  document.getElementById("toolInfo").textContent =
+    `Tools scanned: ${scanned_count} / ${required_tools.length}`;
 
   document.getElementById("toolList").innerHTML = required_tools
-    .map(tool => `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`)
+    .map(tool =>
+      `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`
+    )
     .join("");
 }
 
@@ -255,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const title = titleEl.value.trim();
       const location = locationEl.value.trim();
-      const severity = severityEl.value;
+      const severity = parseInt(severityEl.value);
 
       const created_fault = await createFault(title, location, severity);
 

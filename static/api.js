@@ -1,4 +1,4 @@
-function getAuthHeaders() {
+export function getAuthHeaders() {
   const token = localStorage.getItem("token");
 
   return {

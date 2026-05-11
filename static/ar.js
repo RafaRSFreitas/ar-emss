@@ -2,9 +2,11 @@
 let faultPanel = null;   // stores the 3d box shown in the Tree.js scene
 let scene, camera, renderer;      //objects to display the 3d graphics
 let current_fault_id = null;
+
 import * as THREE from "three";
 import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
-const AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg0NTA3NzR9.0oIrjkKia0nOjp8FqUW4K4Y4fJd-LU27W7fUfAeN6wg"
+import { getAuthHeaders } from "./api.js";   // reuse shared token helper
+
 const required_tools = [
   { id: 1, name: "Spanner", scanned: false },
   { id: 2, name: "Screwdriver", scanned: false },
@@ -16,9 +18,7 @@ const required_tools = [
 
 async function getFault(fault_id) {
   const response = await fetch(`/api/faults/${fault_id}`, {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
+    headers: getAuthHeaders()
   });
 
   const data = await response.json();
@@ -33,9 +33,7 @@ async function getFault(fault_id) {
 
 async function getTools() {
   const response = await fetch("/api/tools", {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
+    headers: getAuthHeaders()
   });
 
   const data = await response.json();
@@ -49,9 +47,7 @@ async function getTools() {
 
 async function getTool(tool_id) {
   const response = await fetch(`/api/tools/${tool_id}`, {
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    }
+    headers: getAuthHeaders()
   });
 
   const data = await response.json();
@@ -66,13 +62,8 @@ async function getTool(tool_id) {
 async function updateTool(tool_id, status) {
   const response = await fetch(`/api/tools/${tool_id}`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
-      status: status
-    })
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status: status })
   });
 
   const data = await response.json();
@@ -87,12 +78,8 @@ async function updateTool(tool_id, status) {
 async function updateFault(fault_id, status) {
   const response = await fetch(`/api/faults/${fault_id}`, {
     method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
-      status: status
-    })
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status: status })
   });
 
   if (!response.ok) {
@@ -185,15 +172,8 @@ async function createFault(title, location, severity) {
   
   const response = await fetch("/api/faults", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AUTH_TOKEN}`
-    },
-    body: JSON.stringify({
-      title: title,
-      location: location,
-      severity: severity
-    })
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ title, location, severity })
   });
 
   const data = await response.json();
@@ -375,39 +355,53 @@ setTimeout(() => {
   console.log("Camera started");
 }
 
+// ---------- Login gate functions ----------
+function showLogin() {
+  document.getElementById("loginOverlay").style.display = "flex";
+  document.getElementById("arUI").style.display = "none";
+  localStorage.removeItem("token");
+}
 
+function showAR() {
+  document.getElementById("loginOverlay").style.display = "none";
+  document.getElementById("arUI").style.display = "block";
+}
 
+function checkAuth() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    showLogin();
+    return;
+  }
+  // Quick token validity test using an existing endpoint
+  fetch("/api/faults", { headers: getAuthHeaders() })
+    .then(res => {
+      if (!res.ok) throw new Error("token invalid");
+      return res.json();
+    })
+    .then(() => {
+      // token is valid – start AR experience
+      showAR();
+      initARScene().then(() => {
+        setupUI(); // attach event listeners after AR is fully initialized
+        updateToolCheckUI();
+      });
+    })
+    .catch(() => {
+      showLogin(); // token invalid or expired
+    });
+}
 
-window.addEventListener("resize", () => {
-  if (!camera || !renderer) return;
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-
-
-
-document.addEventListener("DOMContentLoaded", () => {
-  initARScene();
-  updateToolCheckUI();
- // createSimulatedMarkers();
-
-
+// ---------- UI event listeners (extracted from DOMContentLoaded) ----------
+function setupUI() {
   const closeFaultBtn = document.getElementById("closeFaultBtn");
-
-
   const titleEl = document.getElementById("title");
   const locationEl = document.getElementById("location");
   const severityEl = document.getElementById("severity");
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
 
-
-
-// complete fault button
+  // complete fault button
   closeFaultBtn.addEventListener("click", async () => {
     if (!current_fault_id) return;
 
@@ -424,22 +418,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.error(error);
     }
+  });
 
   const scanToolBtn = document.getElementById("scanToolBtn");
 
   scanToolBtn.addEventListener("click", () => {
-   if (next_tool_index >= required_tools.length) {
-     return;
+    if (next_tool_index >= required_tools.length) {
+      return;
     }
-
-   required_tools[next_tool_index].scanned = true;
-   next_tool_index += 1;
-
-   updateToolCheckUI();
-});
-
-
-
+    required_tools[next_tool_index].scanned = true;
+    next_tool_index += 1;
+    updateToolCheckUI();
   });
 
   // create a new fault
@@ -470,23 +459,65 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error(error);
     }
   });
-  const markerButtons = document.querySelectorAll(".markerBtn")
+
+  const markerButtons = document.querySelectorAll(".markerBtn");
   markerButtons.forEach((button) => {
     button.addEventListener("click", async () => {
       current_fault_id = parseInt(button.dataset.faultId);
+      try {
+        const fault_data = await getFault(current_fault_id);
+
+        createFaultPanel(fault_data);
+        updateFaultInfo(fault_data);
+
+        closeFaultBtn.disabled = false;
+      } catch (error) {
+        document.getElementById("faultInfo").innerText =
+          "Could not load fault from backend.";
+
+        console.error(error);
+      }
+    });
+  });
+}
+
+window.addEventListener("resize", () => {
+  if (!camera || !renderer) return;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  // Login form handler
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const loginMsg = document.getElementById("loginMsg");
+    loginMsg.textContent = "";
     try {
-      const fault_data = await getFault(current_fault_id);
-
-      createFaultPanel(fault_data);
-      updateFaultInfo(fault_data);
-
-      closeFaultBtn.disabled = false;
-    } catch (error) {
-      document.getElementById("faultInfo").innerText =
-        "Could not load fault from backend.";
-
-      console.error(error);
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed");
+      localStorage.setItem("token", data.access_token);
+      showAR();
+      initARScene().then(() => {
+        setupUI();
+        updateToolCheckUI();
+      });
+    } catch (err) {
+      loginMsg.textContent = "Error: " + err.message;
     }
   });
-}); 
-    })
+
+  // Check authentication on load
+  checkAuth();
+});

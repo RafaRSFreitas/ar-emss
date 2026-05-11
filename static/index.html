@@ -73,6 +73,13 @@
             color: #0077cc;
         }
 
+        .statusBtn:hover {
+            filter: brightness(0.9);
+        }
+        .deleteBtn:hover {
+            filter: brightness(0.9);
+        }
+
         /* Muted text */
         .muted {
             color: #666;
@@ -110,6 +117,10 @@
         /* Utility */
         .hidden {
             display: none;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* Mobile refinement */
@@ -151,6 +162,12 @@
 
     <!-- DASHBOARD (hidden until login) -->
     <div id="dashboard" style="display: none;">
+        
+        <!-- Loading spinner (hidden until needed) -->
+        <div id="loadingSpinner" style="display:none; text-align:center; padding:2rem;">
+            <div style="border:4px solid #eee; border-top:4px solid #0077cc; border-radius:50%; width:2rem; height:2rem; animation:spin 1s linear infinite; margin:0 auto 0.75rem;"></div>
+            <p>Loading faults…</p>
+        </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h1 style="margin:0;">Fault Tracker</h1>

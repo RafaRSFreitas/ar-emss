@@ -318,10 +318,11 @@ Object.entries(markerFaultMap).forEach(([marker_index, fault_id]) => {
   };
 
   // tool markers
+ async function startMindAR() {
   const toolMarkerMap = {
     1: 1,
     2: 2,
-    3: 3
+    3: 3,
   };
 
   Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
@@ -350,19 +351,20 @@ Object.entries(markerFaultMap).forEach(([marker_index, fault_id]) => {
     };
   });
 
+  // Start MindAR
   await mindarThree.start();
 
+  // Start rendering loop
   renderer.setAnimationLoop(() => {
     renderer.render(scene, camera);
   });
 
-  // hides loading ui
-  document
-    .querySelectorAll(".mindar-ui-loading")
-    .forEach((element) => {
-      element.style.display = "none";
-    });
+  // Hide loading UI immediately
+  document.querySelectorAll(".mindar-ui-loading").forEach((element) => {
+    element.style.display = "none";
+  });
 
+  // Hide all MindAR overlays after slight delay
   setTimeout(() => {
     document
       .querySelectorAll(

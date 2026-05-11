@@ -99,6 +99,35 @@ listEl.addEventListener("click", async (e) => {
 });
 
 // --- Authentication gatekeeper ------------------------------------
+function parseJwt(token) {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '='));
+    return JSON.parse(decoded);
+  } catch (err) {
+    console.error('parseJwt error:', err);
+    return null;
+  }
+}
+
+function isSupervisor() {
+  const token = localStorage.getItem('token');
+  const payload = parseJwt(token);
+  const role = String(payload?.role || '').toLowerCase();
+  return role === 'admin' || role === 'supervisor';
+}
+
+function updateNavLinks() {
+  const dashboardLink = document.getElementById('dashboardLink');
+  if (!dashboardLink) return;
+  const isAdmin = isSupervisor();
+  dashboardLink.style.display = isAdmin ? 'inline' : 'none';
+  console.log('updateNavLinks payload:', parseJwt(localStorage.getItem('token')), 'showDashboard:', isAdmin);
+}
+
 function setFaultCardError(faultId, message) {
   const errorEl = document.getElementById(`faultError-${faultId}`);
   if (!errorEl) return;
@@ -120,6 +149,7 @@ function showLogin() {
 function showApp() {
   loginOverlay.style.display = "none";
   dashboard.style.display = "block";
+  updateNavLinks();
 }
 
 async function checkAuth() {

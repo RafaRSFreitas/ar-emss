@@ -9,20 +9,21 @@ let faultAnchor = null;
 let nextToolIndex = 0;
 let mindarThree;
 
-const AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg1MTU0ODB9.ss0Ov6vipvZJvr2PDDr1XMDsrIHF6wIvj-yfavkPoZY";
-
-
-
-
-
-
+let AUTH_TOKEN = localStorage.getItem("access_token");
 
 const requiredTools = [
   { id: 1, name: "Spanner", scanned: false },
   { id: 2, name: "Screwdriver", scanned: false },
   { id: 3, name: "Voltage tester", scanned: false }
 ];
+
+
+
+
+
+
+
+
 
 // this just handles backend requests so i dont repeat fetch 500 times
 async function apiRequest(url, options = {}) {
@@ -43,6 +44,41 @@ async function apiRequest(url, options = {}) {
 
   return data;
 }
+
+
+async function login(username, password) {
+  const response = await fetch("/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(JSON.stringify(data));
+  }
+
+  AUTH_TOKEN = data.access_token;
+  localStorage.setItem("access_token", AUTH_TOKEN);
+
+  return data;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // asks backend for a fault and returns it
 async function getFault(faultId) {
@@ -354,8 +390,44 @@ document.addEventListener("DOMContentLoaded", () => {
   const severityEl = document.getElementById("severity");
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
+  const loginOverlay = document.getElementById("loginOverlay");
+  const arUI = document.getElementById("arUI");
+  const loginForm = document.getElementById("loginForm");
+  const usernameEl = document.getElementById("username");
+  const passwordEl = document.getElementById("password");
+  const loginMsg = document.getElementById("loginMsg");
 
+  if (AUTH_TOKEN) {
+  loginOverlay.style.display = "none";
+  arUI.style.display = "block";
   initARScene();
+} else {
+  loginOverlay.style.display = "flex";
+  arUI.style.display = "none";
+}
+
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  loginMsg.textContent = "";
+
+  try {
+    await login(usernameEl.value.trim(), passwordEl.value);
+
+    loginOverlay.style.display = "none";
+    arUI.style.display = "block";
+
+    initARScene();
+  } catch (error) {
+    loginMsg.textContent = "Login failed. Check username and password.";
+    console.error(error);
+  }
+});
+
+
+
+
 
   // closes fault
   closeFaultBtn.addEventListener("click", async () => {

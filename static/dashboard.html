@@ -71,6 +71,12 @@
       align-items: center;
       justify-content: center;
     }
+
+    .important-fault {
+      border: 2px solid #cc3333;
+      background: #fff0f0;
+    }
+    
     .stat-card {
       text-align: center;
     }
@@ -518,7 +524,10 @@
           <div class="card stat-card"><h3>Total</h3><div class="value">${allFaults.length}</div></div>
           <div class="card stat-card"><h3>Open</h3><div class="value" style="color:#cc3333;">${openFaults}</div></div>
           <div class="card stat-card"><h3>Resolved</h3><div class="value" style="color:#33aa33;">${closedFaults}</div></div>
-          <div class="card stat-card"><h3>High Severity</h3><div class="value" style="color:#ff8800;">${highSev}</div></div>
+          <div class="card stat-card ${highSev > 0 ? 'important-fault' : ''}">
+  <h3>High Severity</h3>
+  <div class="value" style="color:#cc3333;">${highSev}</div>
+</div>
         `;
         document.getElementById('toolMetrics').innerHTML = `
           <div class="card stat-card"><h3>Total Tools</h3><div class="value">${allTools.length}</div></div>

@@ -22,6 +22,8 @@ const openFaultsEl         = document.getElementById("openFaults");
 const closedFaultsEl       = document.getElementById("closedFaults");
 const highSeverityFaultsEl = document.getElementById("highSeverityFaults");
 
+const loadingSpinner = document.getElementById("loadingSpinner");
+
 // --- Metrics helper -----------------------------------------------
 function updateMetrics(faults) {
   totalFaultsEl.textContent = faults.length;
@@ -32,6 +34,7 @@ function updateMetrics(faults) {
 
 // --- Refresh faults (only when authenticated) ---------------------
 async function refresh() {
+  loadingSpinner.style.display = "block";
   try {
     const faults = await getFaults();
     renderFaults(listEl, faults);
@@ -42,6 +45,8 @@ async function refresh() {
     } else {
       msgEl.textContent = "Error: " + err.message;
     }
+  } finally {
+    loadingSpinner.style.display = "none";
   }
 }
 
@@ -113,7 +118,8 @@ async function checkAuth() {
   try {
     await getFaults();
     showApp();
-    await refresh();
+    loadingSpinner.style.display = "block";   // show spinner while first data loads
+    await refresh();                          // refresh() will hide it when done
   } catch (err) {
     showLogin();
   }

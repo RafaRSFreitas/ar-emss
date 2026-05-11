@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 from database import Base, engine
+import time
 
 client = TestClient(app)
 
@@ -271,3 +272,79 @@ def test_create_fault_with_token_succeeds():
 
     assert resp.status_code == 201
     assert resp.json()["title"] == "Auth success test"
+
+
+#----------- NEW TESTS (items 1, 3, 4) -----------
+
+def test_delete_fault_success():
+    """DELETE /api/faults/{id} removes a fault and returns 204, then 404."""
+    headers = get_headers()
+
+    # create a fault
+    create_resp = client.post("/api/faults", json={
+        "title": "Worn cable",
+        "location": "Ceiling 2",
+        "severity": 2
+    }, headers=headers)
+    assert create_resp.status_code == 201
+    fault_id = create_resp.json()["id"]
+
+    # delete it
+    del_resp = client.delete(f"/api/faults/{fault_id}", headers=headers)
+    assert del_resp.status_code == 204
+
+    # verify it's gone
+    get_resp = client.get(f"/api/faults/{fault_id}", headers=headers)
+    assert get_resp.status_code == 404
+
+
+def test_recent_activity_returns_ordered_faults():
+    """GET /api/recent-activity returns faults ordered by most recent first."""
+    headers = get_headers()
+
+    # create first fault
+    resp1 = client.post("/api/faults", json={
+        "title": "First fault",
+        "location": "Lab",
+        "severity": 1
+    }, headers=headers)
+    assert resp1.status_code == 201
+    id1 = resp1.json()["id"]
+
+    # tiny delay so timestamps differ
+    time.sleep(0.1)
+
+    # create second fault (this is the newer one)
+    resp2 = client.post("/api/faults", json={
+        "title": "Second fault",
+        "location": "Workshop",
+        "severity": 3
+    }, headers=headers)
+    assert resp2.status_code == 201
+    id2 = resp2.json()["id"]
+
+    # fetch recent activity
+    act_resp = client.get("/api/recent-activity", headers=headers)
+    assert act_resp.status_code == 200
+    activities = act_resp.json()
+    assert isinstance(activities, list)
+    assert len(activities) >= 2
+
+    # the first item should be the most recent fault (id2)
+    assert activities[0]["id"] == id2
+
+
+def test_recent_activity_requires_auth():
+    """GET /api/recent-activity without token returns 401/403."""
+    resp = client.get("/api/recent-activity")
+    assert resp.status_code in (401, 403)
+    body = resp.json()
+    assert body["ok"] is False
+    assert body["error"]["type"] == "http_error"
+
+
+def test_dashboard_page_loads():
+    """GET /dashboard returns 200 (public page, login handled by JS)."""
+    resp = client.get("/dashboard")
+    assert resp.status_code == 200
+    assert "Supervisor Dashboard" in resp.text

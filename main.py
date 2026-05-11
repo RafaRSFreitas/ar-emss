@@ -200,6 +200,29 @@ def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db)
 
     return tool
 
+# ---------- RECENT ACTIVITY ----------
+
+@app.get("/api/recent-activity")
+def recent_activity(db: Session = Depends(get_db), user=Depends(verify_token)):
+    """Return the 10 most recent fault updates for the activity feed."""
+    recent = (
+        db.query(Fault)
+        .order_by(Fault.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+    return [
+        {
+            "id": f.id,
+            "title": f.title,
+            "location": f.location,
+            "severity": f.severity,
+            "status": f.status,
+            "updated_at": f.updated_at.isoformat()
+        }
+        for f in recent
+    ]
+
 # ---------- STATIC FILES & HOME PAGE ----------
 
 # Serve static files 

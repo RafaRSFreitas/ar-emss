@@ -15,7 +15,6 @@
 
 <script type="module" src="/static/ar.js"></script>
 
-
   <style>
 html,
 body {
@@ -91,6 +90,7 @@ body {
       margin: 20px 0;
       border: 0;
       border-top: 1px solid rgba(255,255,255,0.2);
+    }
 
 
 
@@ -100,59 +100,117 @@ body {
       font-size: 14px;
       margin-bottom: 12px;
     }
+
+    /* ---------- Login overlay – match tracker/dashboard style ---------- */
+    #loginOverlay > div {
+      width: 90%;
+      max-width: 320px;
+      padding: 2rem;
+      background: white;
+      border-radius: 12px;
+    }
+
+    #loginOverlay input {
+      font-size: 1rem;
+      padding: 0.625rem;
+      margin-bottom: 0.5rem;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      width: 100%;
+    }
+
+    #loginOverlay button {
+      font-size: 1rem;
+      padding: 0.625rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    #loginOverlay button:hover {
+      background: #f0f0f0;
+    }
+
+    #loginOverlay h2 {
+      margin-top: 0;
+      font-size: 1.5rem;
     }
   </style>
 </head>
 
 <body>
-  <div id="ui">
-    <h3>Maintenance AR Prototype</h3>
 
-    <button id="closeFaultBtn" disabled>Mark Fault Closed</button>
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay" style="
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: none; align-items: center; justify-content: center;
+      z-index: 10000;
+  ">
+      <div>
+          <form id="loginForm">
+              <h2>Login</h2>
+              <input id="username" placeholder="Username" />
+              <input id="password" type="password" placeholder="Password" />
+              <button type="submit">Login</button>
+              <pre id="loginMsg" style="color:red; font-size:0.8125rem; white-space: pre-wrap; word-break: break-word;"></pre>
+          </form>
+      </div>
+  </div>
 
-    <div id="faultInfo">
-      No fault selected.
-    </div>
+  <!-- AR UI (hidden until login) -->
+  <div id="arUI" style="display: none;">
+    <div id="ui">
+      <h3>Maintenance AR Prototype</h3>
 
-    <hr>
+      <button id="closeFaultBtn" disabled>Mark Fault Closed</button>
 
-    <h4>Add New Fault</h4>
+      <div id="faultInfo">
+        No fault selected.
+      </div>
 
-    <input
-      type="text"
-      id="title"
-      placeholder="Fault title"
-    >
+      <hr>
 
-    <input
-      type="text"
-      id="location"
-      placeholder="Location"
-    >
+      <h4>Add New Fault</h4>
 
-    <select id="severity">
-      <option value="1">Low Severity</option>
-      <option value="2">Medium Severity</option>
-      <option value="3">High Severity</option>
-    </select>
+      <input
+        type="text"
+        id="title"
+        placeholder="Fault title"
+      >
 
-    <button id="addBtn">Add Fault</button>
+      <input
+        type="text"
+        id="location"
+        placeholder="Location"
+      >
+
+      <select id="severity">
+        <option value="1">Low Severity</option>
+        <option value="2">Medium Severity</option>
+        <option value="3">High Severity</option>
+      </select>
+
+      <button id="addBtn">Add Fault</button>
 
     <div id="msg"></div>
     <hr>
     <h4>Tool Check</h4>
 
 
-    <div style="margin-top: 12px;" id="toolInfo">
-    Tools scanned: 0 / 3
+      <div style="margin-top: 12px;" id="toolInfo">
+      Tools scanned: 0 / 3
+      </div>
+      <ul id="toolList">
+        <li>Spanner: missing</li>
+        <li>Screwdriver: missing</li>
+        <li>Voltage tester: missing</li>
+      </ul>
     </div>
-    <ul id="toolList">
-      <li>Spanner: missing</li>
-      <li>Screwdriver: missing</li>
-      <li>Voltage tester: missing</li>
-    </ul>
   </div>
-
 
 </body>
 </html>

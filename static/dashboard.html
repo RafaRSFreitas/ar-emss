@@ -148,11 +148,11 @@
       max-width: 100%; /* ensure no overflow */
       aspect-ratio: 1/1;
     }
-    .glance-card {
+    .recent-activity-card {
       text-align: left;
       width: 100%;
     }
-    .glance-card p {
+    .recent-activity-card p {
       margin: 0.25rem 0;
     }
     /* Mobile adjustments */
@@ -193,7 +193,7 @@
   <div id="loginOverlay" style="
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.85);
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       z-index: 100;
   ">
       <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 320px; width: 90%;">
@@ -216,8 +216,8 @@
         <span class="timestamp" id="lastUpdated"></span>
         <button id="refreshBtn">Refresh</button>
         <span class="nav-links">
-            <a href="/">Tracker</a>
-            <a href="/ar">AR View</a>
+            <a href="/">Tracker</a> |
+            <a href="/ar">AR View</a> |
             <a href="#" id="logoutBtn">Logout</a>
         </span>
       </div>
@@ -263,13 +263,10 @@
             <canvas id="toolChart"></canvas>
           </div>
         </div>
-        <div class="card glance-card">
-          <h3>At a Glance</h3>
-          <div style="font-size: 0.9375rem; line-height: 1.6; color: #555;">
-            <p><strong>Total Faults:</strong> <span id="glanceTotalFaults"></span></p>
-            <p><strong>Open / Resolved:</strong> <span id="glanceFaultRatio"></span></p>
-            <p><strong>High Severity:</strong> <span id="glanceHighSev"></span></p>
-            <p><strong>Tools Checked Out:</strong> <span id="glanceToolsOut"></span></p>
+        <div class="card recent-activity-card" style="padding: 0.75rem; align-items: flex-start; justify-content: flex-start;">
+          <h3 style="text-align: center; width: 100%;">Recent Activity</h3>
+          <div id="recentActivityFeed" style="width: 100%; max-height: 280px; overflow-y: auto; font-size: 0.875rem; line-height: 1.6; color: #555;">
+            <p>Loading…</p>
           </div>
         </div>
       </div>
@@ -454,6 +451,46 @@
       resizeTimeout = setTimeout(redrawAllCharts, 150);
     });
 
+    // ---------- Recent Activity ----------
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    async function loadRecentActivity() {
+      const feed = document.getElementById('recentActivityFeed');
+      try {
+        const res = await fetch('/api/recent-activity', { headers: getAuthHeaders() });
+        const activities = await parseJson(res);
+        if (!activities.length) {
+          feed.innerHTML = '<p>No recent activity.</p>';
+          return;
+        }
+        const now = new Date();
+        feed.innerHTML = activities.map(a => {
+          const time = new Date(a.updated_at);
+          const diffMinutes = Math.floor((now - time) / 60000);
+          const timeStr = diffMinutes < 1 ? 'Just now' :
+                          diffMinutes < 60 ? `${diffMinutes}m ago` :
+                          `${Math.floor(diffMinutes/60)}h ago`;
+          const severityLabel = a.severity === 1 ? 'Low' : a.severity === 2 ? 'Medium' : 'High';
+          return `
+            <div style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid #eee;">
+              <strong>${escapeHtml(a.title)}</strong>
+              <span style="color:#888; font-size:0.75rem;"> (${timeStr})</span><br/>
+              <span style="font-size:0.8rem;">
+                Location: ${escapeHtml(a.location)} · Severity: ${severityLabel} · Status: ${a.status}
+              </span>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        feed.innerHTML = `<p style="color:#cc3333;">Failed to load activity: ${escapeHtml(err.message)}</p>`;
+      }
+    }
+
     async function loadDashboard() {
       hideError();
       document.getElementById('loading').classList.remove('hidden');
@@ -489,12 +526,6 @@
           <div class="card stat-card"><h3>Checked Out</h3><div class="value" style="color:#cc8800;">${checkedOutTools}</div></div>
         `;
 
-        // Glance card
-        document.getElementById('glanceTotalFaults').textContent = allFaults.length;
-        document.getElementById('glanceFaultRatio').textContent = `${openFaults} / ${closedFaults}`;
-        document.getElementById('glanceHighSev').textContent = highSev;
-        document.getElementById('glanceToolsOut').textContent = checkedOutTools;
-
         // Show content first to get container sizes
         document.getElementById('content').classList.remove('hidden');
 
@@ -502,6 +533,7 @@
         requestAnimationFrame(() => {
           redrawAllCharts();
           document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+          loadRecentActivity();  // <-- fetch the activity feed
         });
 
       } catch (err) {

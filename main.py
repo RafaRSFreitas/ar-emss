@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
 from models import Fault, User, Tool
+from sqlalchemy import Column, String
 from schemas import FaultCreate, FaultOut, FaultUpdate, UserCreate, ToolCreate, ToolOut, ToolUpdate
 import bcrypt, jwt
 from fastapi.security import HTTPBearer
@@ -12,14 +13,29 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
-import jwt
 import os
-import logging
 # Create tables in the database
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AR Maintenance System")
 
+from database import init_db
+init_db()
+
+#----------PRESET TEST ADMIN----------
+def create_preset_admin():
+    db = SessionLocal()
+    existing = db.query(User).filter(User.username == "admin").first()
+    
+    if not existing:
+        hashed = bcrypt.hashpw("admin123".encode(),bcrypt.gensalt())
+        admin_user = User(username="admin", password=hashed.decode(), role="admin")
+        db.add(admin_user)
+        db.commit()
+        
+    db.close()
+        
+create_preset_admin()    
 
 # -----Centralised error handlers------
 
@@ -90,9 +106,16 @@ def verify_token(token=Depends(security)):
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
         return payload
     except jwt.ExpiredSignatureError:
+        logging.warning("Token is Expired")
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
+        logging.warning("Token is Invalid")
         raise HTTPException(status_code=403, detail="Invalid token")
+
+def admin_required(user=Depends(verify_token)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
     
 # ---------- FAULT ROUTES ----------
 
@@ -143,7 +166,7 @@ def update_fault(fault_id: int, payload: FaultUpdate, db: Session = Depends(get_
 # ---------- DELETE FAULT ----------
 
 @app.delete("/api/faults/{fault_id}", status_code=204)
-def delete_fault(fault_id: int, db: Session = Depends(get_db), user=Depends(verify_token)):
+def delete_fault(fault_id: int, db: Session = Depends(get_db), user=Depends(admin_required)):
     fault = db.query(Fault).filter(Fault.id == fault_id).first()
     if fault is None:
         raise HTTPException(status_code=404, detail="Fault not found")
@@ -187,7 +210,7 @@ def get_tool(tool_id: int, db: Session = Depends(get_db), user=Depends(verify_to
 
 
 @app.patch("/api/tools/{tool_id}", response_model=ToolOut)
-def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db), user=Depends(verify_token)):
+def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db), user=Depends(admin_required)):
     """Update a tool's status (checked_in / checked_out)."""
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
 
@@ -251,7 +274,7 @@ app.add_middleware(
 #Password Hashing
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_change_me_to_a_long_random_string_32bytes_min") #env variables for exposure prevention
-
+login_attempts = {}
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.username == user.username).first()
@@ -259,7 +282,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already exists")
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
     
-    db_user = User(username=user.username, password=hashed.decode())
+    role = "admin" if user.username == "admin" else "engineer"
+    db_user = User(username=user.username, password=hashed.decode(), role=role)
     db.add(db_user)
     db.commit()
     
@@ -269,17 +293,38 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 def login(user:UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.username == user.username).first()
     
+    if user.username not in login_attempts:
+        login_attempts[user.username] = 0
+    
     if not db_user:
+        login_attempts[user.username] += 1
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     if not bcrypt.checkpw(user.password.encode(), db_user.password.encode()):
+        login_attempts[user.username] += 1
+        if login_attempts[user.username] > 5:
+            raise HTTPException (status_code=429, detail="Too many failed attempts")
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    token = create_token({"sub": db_user.username})
+    login_attempts[user.username] = 0
+    
+    token = create_token({"sub": db_user.username, "role": db_user.role})
     
     return {"access_token": token, "token_type": "bearer"}
 
+#---------- ADMIN ROUTES -----------
 
+@app.post("make-admin/{username}")
+def make_admin(username: str, db: Session = Depends(get_db), user=Depends(admin_required)):
+    target = db.query(User).filter(User.username==username).first()
+    
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    target.role = "admin"
+    db.commit()
+    
+    return {"message": f"{username} is now admin"}
 
     
 #Route Protection

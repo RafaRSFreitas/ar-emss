@@ -8,11 +8,11 @@ class Fault(Base):
     __tablename__ = "faults"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, nullable=False)
-    location = Column(String, nullable=False)
+    title = Column(String(100), nullable=False)
+    location = Column(String(100), nullable=False)
     severity = Column(Integer, default=1)
     status = Column(String, nullable=False, default="open")
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     owner = relationship("User", back_populates="faults")
@@ -21,9 +21,9 @@ class Fault(Base):
 class Tool(Base):
     __tablename__ = "tools"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False)
-    status = Column(String, nullable=False, default="checked_in")
+    id = Column(Integer , primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    status = Column(String(20), nullable=False, default="checked_in")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -32,7 +32,10 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False) 
-    password = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="Engineer")
+    username = Column(String(50), unique=True, index=True, nullable=False) 
+    password = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="engineer")
     faults = relationship("Fault", back_populates="owner")
+    
+    #input size for strings retstained, payload attack prevention
+    

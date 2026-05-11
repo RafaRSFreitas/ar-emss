@@ -358,6 +358,12 @@
       document.getElementById('loading').classList.add('hidden');
     }
 
+    function updateRefreshButton() {
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (!refreshBtn) return;
+      refreshBtn.style.display = isSupervisor() ? 'inline-block' : 'none';
+    }
+
     // ---------- Custom Canvas Charts (High-DPI aware) ----------
     function setupCanvas(canvas) {
       const ctx = canvas.getContext('2d');
@@ -611,6 +617,7 @@
     function showDashboard() {
       document.getElementById("loginOverlay").style.display = "none";
       document.getElementById("dashboardContent").style.display = "block";
+      updateRefreshButton();
     }
 
     async function handleLoginSuccess(token) {
@@ -645,7 +652,11 @@
       }
     });
 
-    document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      if (isSupervisor()) {
+        loadDashboard();
+      }
+    });
     document.getElementById('logoutBtn').addEventListener('click', showLogin);
 
     // Initialisation

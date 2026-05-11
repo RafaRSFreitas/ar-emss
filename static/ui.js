@@ -16,8 +16,8 @@ export function renderFaults(container, faults) {
             <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
                 ${
                     f.status === "open"
-                    ? `<button class="statusBtn" data-id="${f.id}" data-next="closed">Resolve</button>`
-                    : `<button class="statusBtn" data-id="${f.id}" data-next="open">Reopen</button>`
+                    ? `<button class="statusBtn" data-id="${f.id}" data-next="closed" style="background:#d4f6d4; color:#1c5a1c; border:1px solid #1c5a1c;">Resolve</button>`
+                    : `<button class="statusBtn" data-id="${f.id}" data-next="open" style="background:#fff4cc; color:#7a6400; border:1px solid #7a6400;">Reopen</button>`
                 }
                 <button class="deleteBtn" data-id="${f.id}" style="background:#ffe6e6; color:#cc3333; border:1px solid #cc3333;">Delete</button>
             </div>

@@ -59,6 +59,20 @@
             box-sizing: border-box;
         }
 
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .nav-links a {
+            font-size: 0.875rem;
+            color: #0077cc;
+            text-decoration: none;
+        }
+        .nav-links a:visited {
+            color: #0077cc;
+        }
+
         /* Muted text */
         .muted {
             color: #666;
@@ -140,13 +154,13 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h1 style="margin:0;">Fault Tracker</h1>
-            <p class="muted" style="margin:0;">
+            <span class="nav-links">
                 <a href="/dashboard">Supervisor Dashboard</a> |
-                <a href="/ar">Open AR View</a> |
+                <a href="/ar">AR View</a> |
                 <a href="#" id="logoutBtn">Logout</a>
-            </p>
+            </span>
         </div>
-        <p class="muted">AR Maintenance System – Dashboard</p>
+        <p></p>
 
         <div class="card">
             <h2>Report Fault</h2>

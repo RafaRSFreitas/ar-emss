@@ -34,8 +34,65 @@ def create_preset_admin():
         db.commit()
         
     db.close()
+
+
+def create_preset_tools():
+    db = SessionLocal()
+    required_tools = [
+        {"id": 1, "name": "Spanner"},
+        {"id": 2, "name": "Screwdriver"},
+        {"id": 3, "name": "Voltage tester"}
+    ]
+
+    for item in required_tools:
+        tool = db.query(Tool).filter(Tool.id == item["id"]).first()
+        if not tool:
+            db.add(Tool(id=item["id"], name=item["name"], status="checked_in"))
+        else:
+            tool.name = item["name"]
+            tool.status = "checked_in"
+
+    db.commit()
+    db.close()
+
+
+def create_preset_faults():
+    db = SessionLocal()
+    admin = db.query(User).filter(User.username == "admin").first()
+    if not admin:
+        db.close()
+        return
+
+    required_faults = [
+        {"id": 1, "title": "Spanner issue", "location": "Marker 1", "severity": 1},
+        {"id": 2, "title": "Screwdriver issue", "location": "Marker 2", "severity": 2},
+        {"id": 3, "title": "Voltage tester issue", "location": "Marker 3", "severity": 3}
+    ]
+
+    for item in required_faults:
+        fault = db.query(Fault).filter(Fault.id == item["id"]).first()
+        if not fault:
+            db.add(Fault(
+                id=item["id"],
+                title=item["title"],
+                location=item["location"],
+                severity=item["severity"],
+                status="open",
+                user_id=admin.id
+            ))
+        else:
+            fault.title = item["title"]
+            fault.location = item["location"]
+            fault.severity = item["severity"]
+            fault.status = "open"
+            fault.user_id = admin.id
+
+    db.commit()
+    db.close()
         
-create_preset_admin()    
+create_preset_admin()
+create_preset_tools()
+create_preset_faults()
 
 # -----Centralised error handlers------
 
@@ -210,7 +267,7 @@ def get_tool(tool_id: int, db: Session = Depends(get_db), user=Depends(verify_to
 
 
 @app.patch("/api/tools/{tool_id}", response_model=ToolOut)
-def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db), user=Depends(admin_required)):
+def update_tool(tool_id: int, payload: ToolUpdate, db: Session = Depends(get_db), user=Depends(verify_token)):
     """Update a tool's status (checked_in / checked_out)."""
     tool = db.query(Tool).filter(Tool.id == tool_id).first()
 

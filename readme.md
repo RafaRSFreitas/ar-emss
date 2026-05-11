@@ -4,6 +4,12 @@ This project is a university group coursework submission for the unit Technologi
 
 A fault tracking and maintenance management platform with JWT authentication, role-based access, a supervisor dashboard, and AR visualization capabilities. The system allows maintenance engineers to report, monitor, and resolve faults via a web interface, while supervisors can oversee operations through a real-time dashboard. An augmented reality view enables on-site personnel to visualise fault details and tool status using marker-based tracking.
 
+## Live Demo
+
+**View the live application**: [https://ar-emss.onrender.com/](https://ar-emss.onrender.com/)
+
+*Note: The live demo may take a few seconds to load as it's running on Render's free tier.*
+
 ## Team
 
 - Artem Potejevs – Cyber Security Pathway
@@ -215,6 +221,8 @@ pytest test_main.py -v
 
 The system uses JWT authentication. Create an account via the login form or register endpoint, then login with username/password.
 
-### Default Test User
-(Requires manual creation or registration endpoint call)
+### Default Admin User (Automatically created on startup)
+- Username: admin
+- Password: admin123
+- Role: admin
 

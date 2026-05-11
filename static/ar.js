@@ -7,9 +7,16 @@ let scene, camera, renderer; // objects for the 3d graphics
 let currentFaultId = null;
 let faultAnchor = null;
 let nextToolIndex = 0;
+let mindarThree;
 
 const AUTH_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg1MTE3MzR9.U_uLEnXD-Apriy0hResUtxMDl-ZkPeAw73R1LhZsEcA";
+
+
+
+
+
+
 
 const requiredTools = [
   { id: 1, name: "Spanner", scanned: false },
@@ -239,141 +246,88 @@ function createTextSprite(text) {
 async function initARScene() {
   console.log("initARScene started");
 
-  const mindarThree = new MindARThree({
+  mindarThree = new MindARThree({
     container: document.body,
     imageTargetSrc: "/static/targets.mind"
   });
-
-const markerFaultMap = {
-  0: 1,
-  1: 2,
-  2: 3
-};
-
-Object.entries(markerFaultMap).forEach(([marker_index, fault_id]) => {
-  const faultAnchor = mindarThree.addAnchor(Number(marker_index));
-
-  faultAnchor.onTargetFound = async () => {
-    console.log(`Fault marker ${marker_index} detected`);
-
-    current_fault_id = fault_id;
-
-    try {
-      const fault_data = await getFault(current_fault_id);
-
-      updateFaultInfo(fault_data);
-      closeFaultBtn.disabled = false;
-
-      createFaultPanel(fault_data, faultAnchor);
-    } catch (error) {
-      document.getElementById("faultInfo").innerText =
-        "Could not load fault from backend.";
-
-      console.error(error);
-    }
-  };
-});
-
 
   renderer = mindarThree.renderer;
   scene = mindarThree.scene;
   camera = mindarThree.camera;
 
+  const markerFaultMap = {
+    0: 1,
+    1: 2,
+    2: 3
+  };
+
+  Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
+    const anchor = mindarThree.addAnchor(Number(markerIndex));
+
+  anchor.onTargetFound = async () => {
+    console.log(`Fault marker ${markerIndex} detected`);
+
+  currentFaultId = faultId;
+  faultAnchor = anchor;
+
+  try {
+    const faultData = await getFault(currentFaultId);
+
+    updateFaultInfo(faultData);
+    document.getElementById("closeFaultBtn").disabled = false;
+
+    createFaultPanel(faultData, anchor);
+  } catch (error) {
+    document.getElementById("faultInfo").innerText =
+      "Could not load fault from backend.";
+
+    console.error(error);
+  }
+};
+  });
+
+  const toolMarkerMap = {
+    3: 1,
+    4: 2,
+    5: 3
+  };
+
+Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
+  const anchor = mindarThree.addAnchor(Number(markerIndex));
+
+  anchor.onTargetFound = async () => {
+    console.log(`Tool marker ${markerIndex} detected`);
 
     try {
-      const faultData = await getFault(currentFaultId);
+      await updateTool(toolId, "checked_out");
 
-      updateFaultInfo(faultData);
-      document.getElementById("closeFaultBtn").disabled = false;
+      const matchingTool = requiredTools.find(
+        tool => tool.id === toolId
+      );
 
-      createFaultPanel(faultData, anchor);
-    } catch (error) {
-      document.getElementById("faultInfo").innerText =
-        "Could not load fault from backend.";
-
-      console.error(error);
-    }
-  };
-
-  const spannerAnchor = mindarThree.addAnchor(3);
-  const screwdriverAnchor = mindarThree.addAnchor(4);
-  const voltageTesterAnchor = mindarThree.addAnchor(5);
-
-  spannerAnchor.onTargetFound = () => {
-    requiredTools[0].scanned = true;
-    updateToolCheckUI();
-    console.log("Spanner detected");
-  };
-
-  screwdriverAnchor.onTargetFound = () => {
-    requiredTools[1].scanned = true;
-    updateToolCheckUI();
-    console.log("Screwdriver detected");
-  };
-
-  voltageTesterAnchor.onTargetFound = () => {
-    requiredTools[2].scanned = true;
-    updateToolCheckUI();
-    console.log("Voltage tester detected");
-  };
-
-  // tool markers
- async function startMindAR() {
-  const toolMarkerMap = {
-    1: 1,
-    2: 2,
-    3: 3,
-  };
-
-  Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
-    const toolAnchor = mindarThree.addAnchor(Number(markerIndex));
-
-    toolAnchor.onTargetFound = async () => {
-      console.log(`Tool marker ${markerIndex} detected`);
-
-      try {
-        const toolData = await updateTool(toolId, "checked_out");
-
-        const matchingTool = requiredTools.find(
-          (tool) => tool.id === toolId
-        );
-
-        if (matchingTool) {
-          matchingTool.scanned = true;
-        }
+      if (matchingTool && !matchingTool.scanned) {
+        matchingTool.scanned = true;
 
         updateToolCheckUI();
 
-        console.log("Tool updated:", toolData);
-      } catch (error) {
-        console.error("Could not update tool:", error);
+        console.log(`${matchingTool.name} marked present`);
       }
-    };
-  });
 
-  // Start MindAR
+    } catch (error) {
+      console.error("Could not update tool:", error);
+    }
+  };
+});
+
   await mindarThree.start();
 
-  // Start rendering loop
   renderer.setAnimationLoop(() => {
+    if (faultPanel) {
+      faultPanel.rotation.y += 0.01;
+    }
+
     renderer.render(scene, camera);
   });
-
-  // Hide loading UI immediately
-  document.querySelectorAll(".mindar-ui-loading").forEach((element) => {
-    element.style.display = "none";
-  });
-
-  // Hide all MindAR overlays after slight delay
-  setTimeout(() => {
-    document
-      .querySelectorAll(
-        ".mindar-ui-loading, .mindar-ui-overlay, .mindar-ui-scanning"
-      )
-      .forEach((element) => {
-        element.style.display = "none";
-      });
-  }, 5);
 
   console.log("MindAR started");
   console.log("Camera started");
@@ -391,7 +345,7 @@ window.addEventListener("resize", () => {
 
 // runs when page loads
 document.addEventListener("DOMContentLoaded", () => {
-  initARScene();
+
   updateToolCheckUI();
 
   const closeFaultBtn = document.getElementById("closeFaultBtn");
@@ -401,6 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
 
+  initARScene();
 
   // closes fault
   closeFaultBtn.addEventListener("click", async () => {
@@ -446,7 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       titleEl.value = "";
       locationEl.value = "";
-      severityEl.value = "low";
+      severityEl.value = "1";
 
       currentFaultId = createdFault.id;
 
@@ -462,25 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // manual marker buttons
-  const markerButtons = document.querySelectorAll(".markerBtn");
 
-  markerButtons.forEach((button) => {
-    button.addEventListener("click", async () => {
-      currentFaultId = parseInt(button.dataset.faultId);
 
-      try {
-        const faultData = await getFault(currentFaultId);
 
-        createFaultPanel(faultData);
-        updateFaultInfo(faultData);
-
-        closeFaultBtn.disabled = false;
-      } catch (error) {
-        document.getElementById("faultInfo").innerText =
-          "Could not load fault from backend.";
-
-        console.error(error);
-      }
-    });
-  });
 });

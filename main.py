@@ -282,7 +282,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already exists")
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
     
-    role = "admin" if user.username == "admin" else "engineer"
+    role = "engineer"
     db_user = User(username=user.username, password=hashed.decode(), role=role)
     db.add(db_user)
     db.commit()

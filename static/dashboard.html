@@ -229,6 +229,12 @@
       </div>
     </header>
 
+    <!-- Unauthorized message -->
+    <div id="unauthorizedBanner" class="error-banner hidden" style="background: #fff4e5; border-color: #ffde9e; color: #8a5c00;">
+      <h2 style="margin-top:0;">Access restricted</h2>
+      <p style="margin:0.5rem 0 0;">Sorry, this dashboard is only available to administrator accounts. Please return to the <a href="/">Fault Tracker</a> or <a href="/ar">AR View</a>.</p>
+    </div>
+
     <!-- Error banner -->
     <div id="errorBanner" class="error-banner hidden"></div>
 
@@ -308,6 +314,48 @@
 
     function hideError() {
       document.getElementById('errorBanner').classList.add('hidden');
+    }
+
+    function showUnauthorized(message) {
+      const banner = document.getElementById('unauthorizedBanner');
+      banner.querySelector('p').textContent = message || 'Sorry, this dashboard is only available to administrator accounts.';
+      banner.classList.remove('hidden');
+      document.getElementById('dashboardContent').classList.remove('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById('loading').classList.add('hidden');
+    }
+
+    function hideUnauthorized() {
+      document.getElementById('unauthorizedBanner').classList.add('hidden');
+    }
+
+    function parseJwt(token) {
+      if (!token) return null;
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '='));
+        return JSON.parse(decoded);
+      } catch (err) {
+        console.error('parseJwt error:', err);
+        return null;
+      }
+    }
+
+    function isSupervisor() {
+      const token = localStorage.getItem('token');
+      const payload = parseJwt(token);
+      const role = String(payload?.role || '').toLowerCase();
+      return role === 'admin' || role === 'supervisor';
+    }
+
+    function clearDashboardState() {
+      hideUnauthorized();
+      hideError();
+      document.getElementById('dashboardContent').classList.add('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById('loading').classList.add('hidden');
     }
 
     // ---------- Custom Canvas Charts (High-DPI aware) ----------
@@ -565,6 +613,19 @@
       document.getElementById("dashboardContent").style.display = "block";
     }
 
+    async function handleLoginSuccess(token) {
+      localStorage.setItem("token", token);
+      if (!isSupervisor()) {
+        clearDashboardState();
+        showDashboard();
+        showUnauthorized('Sorry, this dashboard is only available to administrator accounts.');
+        return;
+      }
+      clearDashboardState();
+      showDashboard();
+      loadDashboard();
+    }
+
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       document.getElementById("loginMsg").textContent = "";
@@ -578,9 +639,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || "Login failed");
-        localStorage.setItem("token", data.access_token);
-        showDashboard();
-        loadDashboard();
+        await handleLoginSuccess(data.access_token);
       } catch (err) {
         document.getElementById("loginMsg").textContent = "Error: " + err.message;
       }
@@ -591,8 +650,13 @@
 
     // Initialisation
     if (localStorage.getItem("token")) {
+      clearDashboardState();
       showDashboard();
-      loadDashboard();
+      if (isSupervisor()) {
+        loadDashboard();
+      } else {
+        showUnauthorized('Sorry, this dashboard is only available to administrator accounts.');
+      }
     } else {
       showLogin();
     }

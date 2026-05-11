@@ -21,6 +21,7 @@ export function renderFaults(container, faults) {
                 }
                 <button class="deleteBtn" data-id="${f.id}" style="background:#ffe6e6; color:#cc3333; border:1px solid #cc3333;">Delete</button>
             </div>
+            <div id="faultError-${f.id}" class="faultError" style="display:none; color:#cc3333; margin-top:0.75rem; font-size:0.95rem;"></div>
         </div>
     `).join("");
 }

@@ -82,12 +82,13 @@ listEl.addEventListener("click", async (e) => {
 
     try {
       msgEl.textContent = "";
+      setFaultCardError(faultId, "");
       delBtn.disabled = true;
 
       await deleteFault(faultId);
       await refresh();
     } catch (err) {
-      msgEl.textContent = "Error: " + err.message;
+      setFaultCardError(faultId, err.message);
       if (err.message === "Login required") {
         forceLogin();
       }
@@ -98,6 +99,18 @@ listEl.addEventListener("click", async (e) => {
 });
 
 // --- Authentication gatekeeper ------------------------------------
+function setFaultCardError(faultId, message) {
+  const errorEl = document.getElementById(`faultError-${faultId}`);
+  if (!errorEl) return;
+  if (message) {
+    errorEl.textContent = message;
+    errorEl.style.display = "block";
+  } else {
+    errorEl.textContent = "";
+    errorEl.style.display = "none";
+  }
+}
+
 function showLogin() {
   loginOverlay.style.display = "flex";
   dashboard.style.display = "none";

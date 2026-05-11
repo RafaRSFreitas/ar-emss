@@ -53,9 +53,15 @@ export async function deleteFault(faultId) {
     headers: getAuthHeaders()
   });
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     localStorage.removeItem("token");
     throw new Error("Login required");
+  }
+
+  if (res.status === 403) {
+    const data = await res.json().catch(() => ({}));
+    const message = data.detail || data.error?.message || "Only admin can delete faults.";
+    throw new Error(message);
   }
 
   if (!res.ok) {

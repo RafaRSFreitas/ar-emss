@@ -1,15 +1,14 @@
 import * as THREE from "three";
 import { MindARThree } from "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js";
+import { getAuthHeaders } from "./api.js";
 
 // stores currently selected fault
-let faultPanel = null; // stores the 3d box shown in the scene
-let scene, camera, renderer; // objects for the 3d graphics
+let faultPanel = null;
+let scene, camera, renderer;
 let currentFaultId = null;
 let faultAnchor = null;
 let nextToolIndex = 0;
 let mindarThree;
-
-let AUTH_TOKEN = localStorage.getItem("access_token");
 
 const requiredTools = [
   { id: 1, name: "Spanner", scanned: false },
@@ -17,21 +16,12 @@ const requiredTools = [
   { id: 3, name: "Voltage tester", scanned: false }
 ];
 
-
-
-
-
-
-
-
-
-// this just handles backend requests so i dont repeat fetch 500 times
+// handles backend requests so fetch isn't repeated everywhere
 async function apiRequest(url, options = {}) {
   const response = await fetch(url, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${AUTH_TOKEN}`,
+      ...getAuthHeaders(),
       ...options.headers
     }
   });
@@ -44,41 +34,6 @@ async function apiRequest(url, options = {}) {
 
   return data;
 }
-
-
-async function login(username, password) {
-  const response = await fetch("/login", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ username, password })
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(data));
-  }
-
-  AUTH_TOKEN = data.access_token;
-  localStorage.setItem("access_token", AUTH_TOKEN);
-
-  return data;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // asks backend for a fault and returns it
 async function getFault(faultId) {
@@ -115,11 +70,7 @@ async function updateFault(faultId, status) {
 async function createFault(title, location, severity) {
   return apiRequest("/api/faults", {
     method: "POST",
-    body: JSON.stringify({
-      title,
-      location,
-      severity
-    })
+    body: JSON.stringify({ title, location, severity })
   });
 }
 
@@ -196,7 +147,7 @@ function updateFaultInfo(faultData) {
   `;
 }
 
-// rotates the fault panel so it looks cool i guess
+// rotates the fault panel
 function animate() {
   requestAnimationFrame(animate);
 
@@ -297,35 +248,35 @@ async function initARScene() {
     2: 3
   };
 
-Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
-  const anchor = mindarThree.addAnchor(Number(markerIndex));
+  Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
+    const anchor = mindarThree.addAnchor(Number(markerIndex));
 
-  anchor.onTargetFound = async () => {
-    console.log(`Fault marker ${markerIndex} detected`);
-    console.log(`Mapped to fault ID: ${faultId}`);
+    anchor.onTargetFound = async () => {
+      console.log(`Fault marker ${markerIndex} detected`);
+      console.log(`Mapped to fault ID: ${faultId}`);
 
-    currentFaultId = faultId;
-    faultAnchor = anchor;
+      currentFaultId = faultId;
+      faultAnchor = anchor;
 
-    try {
-      const faultData = await getFault(currentFaultId);
+      try {
+        const faultData = await getFault(currentFaultId);
 
-      console.log("Fault data loaded:", faultData);
+        console.log("Fault data loaded:", faultData);
 
-      updateFaultInfo(faultData);
-      document.getElementById("closeFaultBtn").disabled = false;
+        updateFaultInfo(faultData);
+        document.getElementById("closeFaultBtn").disabled = false;
 
-      createFaultPanel(faultData, anchor);
+        createFaultPanel(faultData, anchor);
 
-      console.log("Fault panel created");
-    } catch (error) {
-      console.error("Fault backend error:", error);
+        console.log("Fault panel created");
+      } catch (error) {
+        console.error("Fault backend error:", error);
 
-      document.getElementById("faultInfo").innerText =
-        "Could not load fault from backend.";
-    }
-  };
-});
+        document.getElementById("faultInfo").innerText =
+          "Could not load fault from backend.";
+      }
+    };
+  });
 
   const toolMarkerMap = {
     3: 1,
@@ -333,32 +284,32 @@ Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
     5: 3
   };
 
-Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
-  const anchor = mindarThree.addAnchor(Number(markerIndex));
+  Object.entries(toolMarkerMap).forEach(([markerIndex, toolId]) => {
+    const anchor = mindarThree.addAnchor(Number(markerIndex));
 
-  anchor.onTargetFound = async () => {
-    console.log(`Tool marker ${markerIndex} detected`);
+    anchor.onTargetFound = async () => {
+      console.log(`Tool marker ${markerIndex} detected`);
 
-    try {
-      await updateTool(toolId, "checked_out");
+      try {
+        await updateTool(toolId, "checked_out");
 
-      const matchingTool = requiredTools.find(
-        tool => tool.id === toolId
-      );
+        const matchingTool = requiredTools.find(
+          tool => tool.id === toolId
+        );
 
-      if (matchingTool && !matchingTool.scanned) {
-        matchingTool.scanned = true;
+        if (matchingTool && !matchingTool.scanned) {
+          matchingTool.scanned = true;
 
-        updateToolCheckUI();
+          updateToolCheckUI();
 
-        console.log(`${matchingTool.name} marked present`);
+          console.log(`${matchingTool.name} marked present`);
+        }
+
+      } catch (error) {
+        console.error("Could not update tool:", error);
       }
-
-    } catch (error) {
-      console.error("Could not update tool:", error);
-    }
-  };
-});
+    };
+  });
 
   await mindarThree.start();
 
@@ -384,7 +335,39 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// runs when page loads
+// ---------- Login gate ----------
+function showLogin() {
+  document.getElementById("loginOverlay").style.display = "flex";
+  document.getElementById("arUI").style.display = "none";
+  localStorage.removeItem("token");
+}
+
+function showAR() {
+  document.getElementById("loginOverlay").style.display = "none";
+  document.getElementById("arUI").style.display = "block";
+}
+
+function checkAuth() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    showLogin();
+    return;
+  }
+  fetch("/api/faults", { headers: getAuthHeaders() })
+    .then(res => {
+      if (!res.ok) throw new Error("token invalid");
+      return res.json();
+    })
+    .then(() => {
+      showAR();
+      initARScene();
+    })
+    .catch(() => {
+      showLogin();
+    });
+}
+
+// ---------- Runs when page loads ----------
 document.addEventListener("DOMContentLoaded", () => {
 
   updateToolCheckUI();
@@ -395,44 +378,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const severityEl = document.getElementById("severity");
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
-  const loginOverlay = document.getElementById("loginOverlay");
-  const arUI = document.getElementById("arUI");
-  const loginForm = document.getElementById("loginForm");
-  const usernameEl = document.getElementById("username");
-  const passwordEl = document.getElementById("password");
-  const loginMsg = document.getElementById("loginMsg");
 
-  if (AUTH_TOKEN) {
-  loginOverlay.style.display = "none";
-  arUI.style.display = "block";
-  initARScene();
-} else {
-  loginOverlay.style.display = "flex";
-  arUI.style.display = "none";
-}
+  // login form handler
+  document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const loginMsg = document.getElementById("loginMsg");
+    loginMsg.textContent = "";
+    try {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Login failed");
+      localStorage.setItem("token", data.access_token);
+      showAR();
+      initARScene();
+    } catch (err) {
+      document.getElementById("loginMsg").textContent = "Error: " + err.message;
+    }
+  });
 
-
-loginForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  loginMsg.textContent = "";
-
-  try {
-    await login(usernameEl.value.trim(), passwordEl.value);
-
-    loginOverlay.style.display = "none";
-    arUI.style.display = "block";
-
-    initARScene();
-  } catch (error) {
-    loginMsg.textContent = "Login failed. Check username and password.";
-    console.error(error);
-  }
-});
-
-
-
-
+  // check authentication on load
+  checkAuth();
 
   // closes fault
   closeFaultBtn.addEventListener("click", async () => {
@@ -455,9 +426,6 @@ loginForm.addEventListener("submit", async (event) => {
       console.error(error);
     }
   });
-
-  // fake tool scanner button
-
 
   // adds a new fault
   addBtn.addEventListener("click", async () => {
@@ -492,9 +460,5 @@ loginForm.addEventListener("submit", async (event) => {
       console.error(error);
     }
   });
-
-  // manual marker buttons
-
-
 
 });

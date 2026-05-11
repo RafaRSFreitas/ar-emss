@@ -297,30 +297,35 @@ async function initARScene() {
     2: 3
   };
 
-  Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
-    const anchor = mindarThree.addAnchor(Number(markerIndex));
+Object.entries(markerFaultMap).forEach(([markerIndex, faultId]) => {
+  const anchor = mindarThree.addAnchor(Number(markerIndex));
 
   anchor.onTargetFound = async () => {
     console.log(`Fault marker ${markerIndex} detected`);
+    console.log(`Mapped to fault ID: ${faultId}`);
 
-  currentFaultId = faultId;
-  faultAnchor = anchor;
+    currentFaultId = faultId;
+    faultAnchor = anchor;
 
-  try {
-    const faultData = await getFault(currentFaultId);
+    try {
+      const faultData = await getFault(currentFaultId);
 
-    updateFaultInfo(faultData);
-    document.getElementById("closeFaultBtn").disabled = false;
+      console.log("Fault data loaded:", faultData);
 
-    createFaultPanel(faultData, anchor);
-  } catch (error) {
-    document.getElementById("faultInfo").innerText =
-      "Could not load fault from backend.";
+      updateFaultInfo(faultData);
+      document.getElementById("closeFaultBtn").disabled = false;
 
-    console.error(error);
-  }
-};
-  });
+      createFaultPanel(faultData, anchor);
+
+      console.log("Fault panel created");
+    } catch (error) {
+      console.error("Fault backend error:", error);
+
+      document.getElementById("faultInfo").innerText =
+        "Could not load fault from backend.";
+    }
+  };
+});
 
   const toolMarkerMap = {
     3: 1,

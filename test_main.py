@@ -12,6 +12,9 @@ def setup_db():
     """Fresh database before each test — no leftover data between tests."""
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    # Create preset admin user for tests
+    from main import create_preset_admin
+    create_preset_admin()
     yield
 
 
@@ -30,6 +33,19 @@ def login_get_token():
     resp = client.post("/login", json=TEST_USER)
     assert resp.status_code == 200, f"login failed: {resp.text}"
     return resp.json()["access_token"]
+
+
+def login_admin_get_token():
+    """Login admin user and return the Bearer token string."""
+    resp = client.post("/login", json={"username": "admin", "password": "admin123"})
+    assert resp.status_code == 200, f"admin login failed: {resp.text}"
+    return resp.json()["access_token"]
+
+
+def get_admin_headers():
+    """Return auth headers for admin user."""
+    token = login_admin_get_token()
+    return auth_header(token)
 
 
 def auth_header(token: str) -> dict:
@@ -279,6 +295,7 @@ def test_create_fault_with_token_succeeds():
 def test_delete_fault_success():
     """DELETE /api/faults/{id} removes a fault and returns 204, then 404."""
     headers = get_headers()
+    admin_headers = get_admin_headers()
 
     # create a fault
     create_resp = client.post("/api/faults", json={
@@ -289,8 +306,8 @@ def test_delete_fault_success():
     assert create_resp.status_code == 201
     fault_id = create_resp.json()["id"]
 
-    # delete it
-    del_resp = client.delete(f"/api/faults/{fault_id}", headers=headers)
+    # delete it (requires admin)
+    del_resp = client.delete(f"/api/faults/{fault_id}", headers=admin_headers)
     assert del_resp.status_code == 204
 
     # verify it's gone

@@ -9,7 +9,7 @@ let faultAnchor = null;
 let nextToolIndex = 0;
 
 const AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg0NTA3NzR9.0oIrjkKia0nOjp8FqUW4K4Y4fJd-LU27W7fUfAeN6wg";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg1MTE3MzR9.U_uLEnXD-Apriy0hResUtxMDl-ZkPeAw73R1LhZsEcA";
 
 const requiredTools = [
   { id: 1, name: "Spanner", scanned: false },
@@ -166,18 +166,16 @@ function animate() {
 
 // updates tool checklist ui
 function updateToolCheckUI() {
-  const scannedCount = requiredTools.filter(
-    (tool) => tool.scanned
+  const scanned_count = requiredTools.filter(
+    tool => tool.scanned
   ).length;
 
-  document.getElementById(
-    "toolInfo"
-  ).textContent = `Tools scanned: ${scannedCount} / ${requiredTools.length}`;
+  document.getElementById("toolInfo").textContent =
+    `Tools scanned: ${scanned_count} / ${requiredTools.length}`;
 
   document.getElementById("toolList").innerHTML = requiredTools
-    .map(
-      (tool) =>
-        `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`
+    .map(tool =>
+      `<li>${tool.name}: ${tool.scanned ? "present" : "missing"}</li>`
     )
     .join("");
 }
@@ -246,18 +244,41 @@ async function initARScene() {
     imageTargetSrc: "/static/targets.mind"
   });
 
+const markerFaultMap = {
+  0: 1,
+  1: 2,
+  2: 3
+};
+
+Object.entries(markerFaultMap).forEach(([marker_index, fault_id]) => {
+  const faultAnchor = mindarThree.addAnchor(Number(marker_index));
+
+  faultAnchor.onTargetFound = async () => {
+    console.log(`Fault marker ${marker_index} detected`);
+
+    current_fault_id = fault_id;
+
+    try {
+      const fault_data = await getFault(current_fault_id);
+
+      updateFaultInfo(fault_data);
+      closeFaultBtn.disabled = false;
+
+      createFaultPanel(fault_data, faultAnchor);
+    } catch (error) {
+      document.getElementById("faultInfo").innerText =
+        "Could not load fault from backend.";
+
+      console.error(error);
+    }
+  };
+});
+
+
   renderer = mindarThree.renderer;
   scene = mindarThree.scene;
   camera = mindarThree.camera;
 
-  const anchor = mindarThree.addAnchor(0);
-  faultAnchor = anchor;
-
-  // main fault marker
-  anchor.onTargetFound = async () => {
-    console.log("Marker detected");
-
-    currentFaultId = 1;
 
     try {
       const faultData = await getFault(currentFaultId);
@@ -274,7 +295,27 @@ async function initARScene() {
     }
   };
 
-  await mindarThree.start();
+  const spannerAnchor = mindarThree.addAnchor(3);
+  const screwdriverAnchor = mindarThree.addAnchor(4);
+  const voltageTesterAnchor = mindarThree.addAnchor(5);
+
+  spannerAnchor.onTargetFound = () => {
+    requiredTools[0].scanned = true;
+    updateToolCheckUI();
+    console.log("Spanner detected");
+  };
+
+  screwdriverAnchor.onTargetFound = () => {
+    requiredTools[1].scanned = true;
+    updateToolCheckUI();
+    console.log("Screwdriver detected");
+  };
+
+  voltageTesterAnchor.onTargetFound = () => {
+    requiredTools[2].scanned = true;
+    updateToolCheckUI();
+    console.log("Voltage tester detected");
+  };
 
   // tool markers
   const toolMarkerMap = {
@@ -308,6 +349,8 @@ async function initARScene() {
       }
     };
   });
+
+  await mindarThree.start();
 
   renderer.setAnimationLoop(() => {
     renderer.render(scene, camera);
@@ -350,14 +393,12 @@ document.addEventListener("DOMContentLoaded", () => {
   updateToolCheckUI();
 
   const closeFaultBtn = document.getElementById("closeFaultBtn");
-  const scanToolBtn = document.getElementById("scanToolBtn");
-
   const titleEl = document.getElementById("title");
   const locationEl = document.getElementById("location");
   const severityEl = document.getElementById("severity");
-
   const addBtn = document.getElementById("addBtn");
   const msgEl = document.getElementById("msg");
+
 
   // closes fault
   closeFaultBtn.addEventListener("click", async () => {
@@ -382,16 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // fake tool scanner button
-  scanToolBtn.addEventListener("click", () => {
-    if (nextToolIndex >= requiredTools.length) {
-      return;
-    }
 
-    requiredTools[nextToolIndex].scanned = true;
-    nextToolIndex += 1;
-
-    updateToolCheckUI();
-  });
 
   // adds a new fault
   addBtn.addEventListener("click", async () => {

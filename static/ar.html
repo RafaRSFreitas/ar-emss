@@ -77,13 +77,33 @@ body {
   top: 10px;
   left: 10px;
   z-index: 99999;
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  padding: 16px;
-  border-radius: 12px;
+
+  width: 320px;
+  max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
+
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+
+  padding: 16px;
+  border-radius: 12px;
+
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+
+  box-sizing: border-box;
 }
+
+@media (max-width: 600px) {
+  #ui {
+    width: calc(100vw - 20px);
+    max-height: 45vh;
+    font-size: 13px;
+  }
+}
+
+
 
     h3, h4 {
       margin-top: 0;

@@ -342,9 +342,34 @@ function showLogin() {
   localStorage.removeItem("token");
 }
 
+function parseJwt(token) {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '='));
+    return JSON.parse(decoded);
+  } catch (error) {
+    console.error('parseJwt error:', error, token);
+    return null;
+  }
+}
+
+function updateNavLinks() {
+  const payload = parseJwt(localStorage.getItem('token'));
+  const dashboardLink = document.getElementById('dashboardLink');
+  if (!dashboardLink) return;
+  const role = String(payload?.role || '').toLowerCase();
+  const isAdmin = ['admin', 'supervisor'].includes(role);
+  dashboardLink.style.display = isAdmin ? 'inline-block' : 'none';
+  console.log('updateNavLinks payload:', payload, 'showDashboard:', isAdmin);
+}
+
 function showAR() {
   document.getElementById("loginOverlay").style.display = "none";
   document.getElementById("arUI").style.display = "block";
+  updateNavLinks();
 }
 
 function checkAuth() {

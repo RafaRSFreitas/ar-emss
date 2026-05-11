@@ -170,7 +170,8 @@ def verify_token(token=Depends(security)):
         raise HTTPException(status_code=403, detail="Invalid token")
 
 def admin_required(user=Depends(verify_token)):
-    if user.get("role") != "admin":
+    role = str(user.get("role", "")).lower()
+    if role not in ("admin", "supervisor"):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
     

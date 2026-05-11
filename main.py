@@ -312,21 +312,7 @@ def login(user:UserCreate, db: Session = Depends(get_db)):
     
     return {"access_token": token, "token_type": "bearer"}
 
-#---------- ADMIN ROUTES -----------
-
-@app.post("make-admin/{username}")
-def make_admin(username: str, db: Session = Depends(get_db), user=Depends(admin_required)):
-    target = db.query(User).filter(User.username==username).first()
-    
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    target.role = "admin"
-    db.commit()
-    
-    return {"message": f"{username} is now admin"}
-
-    
+   
 #Route Protection
 
 @app.get("/api/secure/faults", response_model=list[FaultOut])

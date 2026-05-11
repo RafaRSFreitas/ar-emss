@@ -10,7 +10,7 @@ let nextToolIndex = 0;
 let mindarThree;
 
 const AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg1MTE3MzR9.U_uLEnXD-Apriy0hResUtxMDl-ZkPeAw73R1LhZsEcA";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJDYXJsb3MiLCJleHAiOjE3Nzg1MTU0ODB9.ss0Ov6vipvZJvr2PDDr1XMDsrIHF6wIvj-yfavkPoZY";
 
 
 

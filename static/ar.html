@@ -36,14 +36,11 @@ body {
   position: fixed;
   top: 10px;
   left: 10px;
-  z-index: 9999;
-
-  background: rgba(0, 0, 0, 0.85); /* black, 85% visible */
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.85);
   color: white;
-
   padding: 16px;
   border-radius: 12px;
-
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -101,43 +98,7 @@ body {
       margin-bottom: 12px;
     }
 
-    /* ---------- Login overlay – match tracker/dashboard style ---------- */
-    #loginOverlay > div {
-      width: 90%;
-      max-width: 320px;
-      padding: 2rem;
-      background: white;
-      border-radius: 12px;
-    }
 
-    #loginOverlay input {
-      font-size: 1rem;
-      padding: 0.625rem;
-      margin-bottom: 0.5rem;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      width: 100%;
-    }
-
-    #loginOverlay button {
-      font-size: 1rem;
-      padding: 0.625rem;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      background: white;
-      cursor: pointer;
-      width: 100%;
-    }
-
-    #loginOverlay button:hover {
-      background: #f0f0f0;
-    }
-
-    #loginOverlay h2 {
-      margin-top: 0;
-      font-size: 1.5rem;
-    }
   </style>
 </head>
 
